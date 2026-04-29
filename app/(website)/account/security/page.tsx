@@ -1,13 +1,22 @@
-import { Shield, ShieldCheck, AlertTriangle } from "lucide-react";
+import Link from "next/link";
+import { AlertTriangle, Shield, ShieldCheck } from "lucide-react";
+import { TotpMfaSetupCard } from "@/components/auth/totp-mfa-setup-card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { requireSignedIn } from "@/lib/auth/server";
+import { hasStaffAccess } from "@/lib/auth/shared";
 
-export default function SecurityPage() {
+export default async function SecurityPage() {
+  const user = await requireSignedIn("/account/security");
+  const mfaStatus = user.mfa.enabled
+    ? `ACTIVE: ${user.mfa.enabledMethods.join(", ")}`
+    : "INACTIVE";
+
   return (
     <div className="flex flex-col gap-6">
       <div>
         <p
-          className="font-display text-[10px] font-semibold uppercase text-primary mb-1"
+          className="mb-1 font-display text-[10px] font-semibold uppercase text-primary"
           style={{ letterSpacing: "0.18em" }}
         >
           OPERATOR PORTAL
@@ -20,8 +29,7 @@ export default function SecurityPage() {
         </h2>
       </div>
 
-      {/* Two-factor authentication */}
-      <section className="bg-surface-container-low p-6 flex flex-col gap-4">
+      <section className="flex flex-col gap-4 bg-surface-container-low p-6">
         <div className="flex items-center gap-2">
           <Shield className="size-4 text-muted-foreground/50" />
           <p
@@ -33,68 +41,81 @@ export default function SecurityPage() {
         </div>
 
         <div className="flex items-start gap-3">
-          <AlertTriangle className="size-4 text-destructive shrink-0 mt-0.5" />
+          {user.mfa.enabled ? (
+            <ShieldCheck className="mt-0.5 size-4 shrink-0 text-accent" />
+          ) : (
+            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-destructive" />
+          )}
           <div>
             <p
               className="text-[11px] font-semibold uppercase text-foreground"
               style={{ letterSpacing: "0.08em" }}
             >
-              STATUS: INACTIVE
+              STATUS: {mfaStatus}
             </p>
-            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-              Two-factor authentication is not enabled. Enable 2FA to add an
-              extra layer of security to your account.
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              {user.mfa.enabled
+                ? "This account already has multi-factor authentication configured."
+                : "This account does not have multi-factor authentication configured yet."}
             </p>
           </div>
         </div>
 
-        <Button
-          className="gradient-primary text-primary-foreground font-bold uppercase rounded-none border-0 text-[10px] w-fit gap-2"
-          style={{ letterSpacing: "0.12em" }}
-        >
-          <ShieldCheck className="size-3.5" />
-          ENABLE 2FA
-        </Button>
+        {!user.mfa.enabled && hasStaffAccess(user) ? (
+          <Button
+            asChild
+            className="w-fit gap-2 rounded-none border-0 text-[10px] font-bold uppercase text-primary-foreground gradient-primary"
+            style={{ letterSpacing: "0.12em" }}
+          >
+            <Link href="/admin/setup-mfa">
+              <ShieldCheck data-icon="inline-start" />
+              Enable admin MFA
+            </Link>
+          </Button>
+        ) : null}
       </section>
+
+      {!user.mfa.enabled ? (
+        <TotpMfaSetupCard
+          buttonLabel="Enable authenticator app"
+          description="Add an authenticator app to help protect your account whenever you sign in."
+          email={user.email}
+          redirectTo="/account/security"
+          title="Add Authenticator App"
+        />
+      ) : null}
 
       <Separator className="bg-border/20" />
 
-      {/* Password */}
-      <section className="bg-surface-container-low p-6 flex flex-col gap-4">
+      <section className="flex flex-col gap-4 bg-surface-container-low p-6">
         <p
           className="font-display text-[10px] font-semibold uppercase text-primary"
           style={{ letterSpacing: "0.18em" }}
         >
-          PASSWORD
+          EMAIL VERIFICATION
         </p>
         <p className="text-xs text-muted-foreground">
-          Last changed{" "}
-          <span className="text-foreground">March 1, 2025</span>
+          Current status{" "}
+          <span className="text-foreground">
+            {user.emailVerified ? "verified" : "pending verification"}
+          </span>
         </p>
-        <Button
-          variant="outline"
-          className="rounded-none uppercase font-bold border-border/30 text-foreground hover:bg-surface-container text-[10px] w-fit"
-          style={{ letterSpacing: "0.1em" }}
-        >
-          CHANGE PASSWORD
-        </Button>
       </section>
 
       <Separator className="bg-border/20" />
 
-      {/* Encryption status */}
-      <section className="bg-surface-container p-6 flex flex-col gap-3">
+      <section className="flex flex-col gap-3 bg-surface-container p-6">
         <div className="flex items-center gap-3">
-          <ShieldCheck className="size-4 text-accent shrink-0" />
+          <ShieldCheck className="size-4 shrink-0 text-accent" />
           <div>
             <p
               className="text-[11px] font-semibold uppercase text-foreground"
               style={{ letterSpacing: "0.08em" }}
             >
-              AES-256 DATA ENCRYPTION: ACTIVE
+              ACCOUNT PROTECTION ACTIVE
             </p>
-            <p className="text-[10px] text-muted-foreground/60 mt-0.5">
-              All account data is encrypted at rest and in transit.
+            <p className="mt-0.5 text-[10px] text-muted-foreground/60">
+              Your current session is active and protected by your account sign-in settings.
             </p>
           </div>
         </div>

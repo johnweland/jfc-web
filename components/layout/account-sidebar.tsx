@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { User, Package, Heart, MapPin, Shield } from "lucide-react";
+import { Heart, MapPin, Package, Shield, User } from "lucide-react";
+import { SignOutButton } from "@/components/auth/sign-out-button";
+import type { AccountUserState } from "@/lib/auth/shared";
 
 const navItems = [
   { label: "PROFILE",       href: "/account",            icon: User },
@@ -12,11 +14,36 @@ const navItems = [
   { label: "SECURITY",      href: "/account/security",   icon: Shield },
 ];
 
-export function AccountSidebar() {
+export function AccountSidebar({ user }: { user: AccountUserState }) {
   const pathname = usePathname();
 
   return (
     <aside className="hidden lg:flex w-52 shrink-0 flex-col gap-1 sticky top-20">
+      <div className="mb-4 flex flex-col gap-3 bg-surface-container-low p-4">
+        <div className="flex items-center gap-3">
+          <div className="flex size-10 items-center justify-center bg-surface-container-highest">
+            <span className="font-display text-sm font-bold text-primary">
+              {user.initials}
+            </span>
+          </div>
+          <div className="min-w-0">
+            <p
+              className="truncate font-display text-xs font-semibold uppercase text-foreground"
+              style={{ letterSpacing: "0.06em" }}
+            >
+              {user.displayName}
+            </p>
+            <p className="truncate text-[10px] text-muted-foreground">
+              {user.email ?? user.username ?? "Authenticated"}
+            </p>
+          </div>
+        </div>
+        <SignOutButton
+          className="w-full rounded-none text-[10px] font-bold uppercase"
+          variant="outline"
+        />
+      </div>
+
       <p
         className="px-3 pb-2 text-[10px] font-semibold uppercase text-muted-foreground/50"
         style={{ letterSpacing: "0.18em" }}
