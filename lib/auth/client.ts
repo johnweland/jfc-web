@@ -30,11 +30,17 @@ export async function getClientAuthState(): Promise<AuthUserState | null> {
       accessTokenPayload["cognito:groups"] ?? idTokenPayload["cognito:groups"]
     );
     const role = getUserRole({ groups });
+    const cognitoSub =
+      asString(idTokenPayload.sub) ??
+      asString(accessTokenPayload.sub) ??
+      currentUser.userId ??
+      null;
     // Client-side MFA state comes from Cognito's MFA preference APIs.
     const enabledMethods = (mfaPreference.enabled ?? []) as AuthMfaMethod[];
     const preferredMethod = (mfaPreference.preferred ?? null) as AuthMfaMethod | null;
 
     return {
+      cognitoSub,
       email:
         asString(idTokenPayload.email) ??
         currentUser.signInDetails?.loginId ??

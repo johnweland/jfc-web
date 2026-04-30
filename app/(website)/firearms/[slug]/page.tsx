@@ -5,15 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { AvailabilityBadge } from "@/components/ui/availability-badge";
 import { ProductCard } from "@/components/ui/product-card";
+import { ProductImageGallery } from "@/components/catalog/product-image-gallery";
 import { AddToCartButton } from "@/components/ui/add-to-cart-button";
 import { FavoriteButton } from "@/components/ui/favorite-button";
-import { firearms } from "@/lib/data/firearms";
-import { parts } from "@/lib/data/parts";
+import { getLiveProductBySlug, getLiveProductsByCategory } from "@/lib/catalog/live";
 import type { Firearm } from "@/lib/data/types";
 
-export function generateStaticParams() {
-  return firearms.map((f) => ({ slug: f.slug }));
-}
+export const dynamic = "force-dynamic";
 
 function formatPrice(price: number) {
   return new Intl.NumberFormat("en-US", {
@@ -61,12 +59,12 @@ interface Props {
 
 export default async function FirearmDetailPage({ params }: Props) {
   const { slug } = await params;
-  const firearm = firearms.find((f) => f.slug === slug);
+  const firearm = (await getLiveProductBySlug(slug, "firearm")) as Firearm | undefined;
   if (!firearm) notFound();
 
   const isBackordered = firearm.status === "backordered";
 
-  const accessories = parts
+  const accessories = (await getLiveProductsByCategory("part"))
     .filter((p) => p.status !== "backordered")
     .slice(0, 4);
 
@@ -94,33 +92,11 @@ export default async function FirearmDetailPage({ params }: Props) {
           <div className="grid grid-cols-1 gap-14 lg:grid-cols-2">
 
             {/* Left — image */}
-            <div className="flex flex-col gap-4">
-              <div className="aspect-[4/3] bg-surface-container-low flex items-center justify-center">
-                <span
-                  className="font-display text-xs uppercase text-muted-foreground/25"
-                  style={{ letterSpacing: "0.25em" }}
-                >
-                  PRODUCT IMAGE
-                </span>
-              </div>
-              <div className="flex gap-2">
-                {[0, 1, 2].map((i) => (
-                  <div
-                    key={i}
-                    className={`h-16 w-20 bg-surface-container-low flex items-center justify-center ${
-                      i === 0 ? "outline outline-1 outline-primary" : ""
-                    }`}
-                  >
-                    <span
-                      className="text-[8px] text-muted-foreground/30 uppercase"
-                      style={{ letterSpacing: "0.1em" }}
-                    >
-                      {i + 1}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <ProductImageGallery
+              images={firearm.images}
+              productName={firearm.name}
+              emptyLabel="PRODUCT IMAGE"
+            />
 
             {/* Right — identity, price, description, CTAs */}
             <div className="flex flex-col gap-6">
@@ -212,6 +188,7 @@ export default async function FirearmDetailPage({ params }: Props) {
                     price: firearm.price,
                     category: "firearm",
                     status: firearm.status,
+                    imageUrl: firearm.images[0],
                   }}
                 />
               </div>

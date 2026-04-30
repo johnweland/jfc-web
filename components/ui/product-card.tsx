@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -23,7 +24,15 @@ function getCtaLabel(product: Product): string {
 }
 
 function getProductHref(product: Product): string {
-  return `/${product.category === "part" ? "parts" : product.category + "s"}/${product.slug}`;
+  if (product.category === "part") {
+    return `/parts/${product.slug}`;
+  }
+
+  if (product.category === "apparel") {
+    return `/apparel/${product.slug}`;
+  }
+
+  return `/firearms/${product.slug}`;
 }
 
 interface ProductCardProps {
@@ -65,11 +74,21 @@ export function ProductCard({ product, className }: ProductCardProps) {
     >
       {/* Image */}
       <Link href={href} className="relative block overflow-hidden aspect-[4/3] bg-surface-container">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className="font-display text-xs uppercase text-muted-foreground/40 tracking-widest">
-            {product.category.toUpperCase()}
-          </span>
-        </div>
+        {product.images[0] ? (
+          <Image
+            src={product.images[0]}
+            alt={product.name}
+            fill
+            className="object-cover"
+            sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 25vw"
+          />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="font-display text-xs uppercase text-muted-foreground/40 tracking-widest">
+              {product.category.toUpperCase()}
+            </span>
+          </div>
+        )}
         {/* Favorites button */}
         <button
           onClick={(e) => {
@@ -81,6 +100,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
               price: product.price,
               category: product.category,
               status: product.status,
+              imageUrl: product.images[0],
             });
           }}
           aria-label={isFavorited(product.slug) ? "Remove from favorites" : "Add to favorites"}

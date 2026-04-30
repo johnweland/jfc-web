@@ -11,6 +11,7 @@ export interface AuthMfaState {
 }
 
 export interface AuthUserState {
+  cognitoSub: string | null;
   email: string | null;
   groups: AdminGroup[];
   isSignedIn: boolean;
