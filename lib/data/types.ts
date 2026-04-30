@@ -11,6 +11,8 @@ interface BaseProduct {
   name: string;
   sku: string;
   price: number;
+  availableQuantity: number;
+  taxRate: number;
   originalPrice?: number;
   status: AvailabilityStatus;
   category: ProductCategory;

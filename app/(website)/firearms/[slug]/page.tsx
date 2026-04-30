@@ -162,6 +162,9 @@ export default async function FirearmDetailPage({ params }: Props) {
                     sku: firearm.sku,
                     price: firearm.price,
                     category: "firearm",
+                    imageUrl: firearm.images[0],
+                    maxQuantity: firearm.availableQuantity,
+                    taxRate: firearm.taxRate,
                     requiresFFL: firearm.requiresFFL,
                   }}
                   backordered={isBackordered}

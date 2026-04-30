@@ -46,6 +46,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { asPercent } from "@/lib/tax/shared";
 
 import type { InventoryItem } from "@/lib/types/inventory";
 import { InventoryStatusBadge, InventorySourceBadge } from "./inventory-badges";
@@ -165,6 +166,25 @@ const columns = [
         ${info.getValue().toFixed(2)}
       </span>
     ),
+  }),
+  columnHelper.accessor("taxMode", {
+    header: "TAX",
+    cell: (info) => {
+      const item = info.row.original
+      if (item.taxMode === "EXEMPT") {
+        return <span className="text-[10px] font-semibold uppercase text-muted-foreground">EXEMPT</span>
+      }
+
+      if (item.taxMode === "CUSTOM" && typeof item.customTaxRate === "number") {
+        return <span className="font-mono text-sm text-foreground">{asPercent(item.customTaxRate)}</span>
+      }
+
+      return (
+        <span className="text-[10px] font-semibold uppercase text-muted-foreground">
+          {item.taxMode}
+        </span>
+      )
+    },
   }),
   columnHelper.accessor("quantity", {
     header: ({ column }) => <SortableHeader column={column} label="QTY" />,

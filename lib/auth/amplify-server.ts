@@ -23,10 +23,15 @@ function readAmplifyOutputs() {
 
 export const amplifyOutputs = readAmplifyOutputs();
 export const amplifyConfig = parseAmplifyConfig(amplifyOutputs);
+export type AmplifyOutputs = typeof amplifyOutputs;
 
 export const isAmplifyAuthConfigured = Boolean(
   amplifyConfig.Auth?.Cognito?.userPoolId &&
     amplifyConfig.Auth?.Cognito?.userPoolClientId
+);
+
+export const isAmplifyDataConfigured = Boolean(
+  amplifyConfig.API?.GraphQL?.endpoint,
 );
 
 export const cognitoRegion =

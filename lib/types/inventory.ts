@@ -1,6 +1,7 @@
 export type InventoryItemType = "FIREARM" | "PART" | "ACCESSORY" | "APPAREL" | "OTHER"
 export type InventoryStatus = "DRAFT" | "AVAILABLE" | "RESERVED" | "SOLD" | "ARCHIVED"
 export type InventorySource = "MANUAL" | "ROCPAY" | "FFLSAFE"
+export type InventoryTaxMode = "DEFAULT" | "CATEGORY" | "CUSTOM" | "EXEMPT"
 
 export type InventoryImage = {
   key: string    // S3 object key, e.g. "inventory/inv-001/abc123.jpg"
@@ -38,6 +39,8 @@ export type InventoryItem = {
   cost?: number
   quantity: number
   location?: string
+  taxMode: InventoryTaxMode
+  customTaxRate?: number
 
   // Source tracking for imports/exports
   sourceSystem: InventorySource

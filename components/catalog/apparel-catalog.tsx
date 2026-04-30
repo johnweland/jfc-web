@@ -6,9 +6,8 @@ import { ProductCard } from "@/components/ui/product-card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
+import { DEFAULT_APPAREL_SIZE, getApparelSizeOptions } from "@/lib/data/apparel-sizes"
 import type { Apparel } from "@/lib/data/types"
-
-const sizeOptions = ["SM", "MD", "LG", "XL", "2XL", "3XL", "One Size"]
 
 function FilterSection({
   label,
@@ -31,6 +30,7 @@ function FilterSection({
 }
 
 export function ApparelCatalog({ apparel }: { apparel: Apparel[] }) {
+  const sizeOptions = getApparelSizeOptions(apparel.flatMap((item) => item.sizes))
   const categoryOptions = [
     { label: "ALL PROVISIONS", value: "all" },
     ...Array.from(new Set(apparel.map((item) => item.apparelType))).map((type) => ({
@@ -65,7 +65,9 @@ export function ApparelCatalog({ apparel }: { apparel: Apparel[] }) {
     if (selectedCategory !== "all" && item.apparelType !== selectedCategory) return false
     if (
       selectedSizes.length > 0 &&
-      !selectedSizes.some((size) => item.sizes.includes(size) || item.sizes.includes("One Size"))
+      !selectedSizes.some(
+        (size) => item.sizes.includes(size) || item.sizes.includes(DEFAULT_APPAREL_SIZE),
+      )
     ) {
       return false
     }

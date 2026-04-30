@@ -2,13 +2,14 @@ import "server-only"
 
 import { generateServerClientUsingCookies } from "@aws-amplify/adapter-nextjs/data"
 import { cookies } from "next/headers"
-import outputs from "@/amplify_outputs.json"
 import type { Schema } from "@/amplify/data/resource"
+import { amplifyOutputs } from "@/lib/auth/amplify-server"
 import { getServerAuthState } from "@/lib/auth/server"
 import type { InventoryItem } from "@/lib/types/inventory"
+import { refreshInventoryImages } from "./image-urls"
 import { fromAmplifyRecord } from "./mapper"
 
-const PUBLIC_INVENTORY_SELECTION = [
+const LEGACY_INVENTORY_SELECTION = [
   "id",
   "internalSku",
   "sku",
@@ -35,13 +36,20 @@ const PUBLIC_INVENTORY_SELECTION = [
   "color",
   "material",
   "apparelVariants",
+  "images",
   "createdAt",
   "updatedAt",
 ] as const
 
+const TAX_INVENTORY_SELECTION = [
+  ...LEGACY_INVENTORY_SELECTION,
+  "taxMode",
+  "customTaxRate",
+] as const
+
 function getClient() {
   return generateServerClientUsingCookies<Schema>({
-    config: outputs,
+    config: amplifyOutputs,
     cookies,
     authMode: "userPool",
   })
@@ -49,26 +57,102 @@ function getClient() {
 
 function getPublicClient() {
   return generateServerClientUsingCookies<Schema>({
-    config: outputs,
+    config: amplifyOutputs,
     cookies,
     authMode: "apiKey",
   })
 }
 
+function hasTaxSchemaReadError(errors: readonly { message: string }[] | undefined) {
+  return Boolean(
+    errors?.some(
+      (error) =>
+        error.message.includes("taxMode") ||
+        error.message.includes("customTaxRate"),
+    ),
+  )
+}
+
+async function mapInventoryRecords(records: Schema["InventoryItem"]["type"][]) {
+  const mapped = await Promise.all(
+    records.map(async (record) => {
+      const item = fromAmplifyRecord(record)
+      return {
+        ...item,
+        images: await refreshInventoryImages(item.images),
+      }
+    }),
+  )
+
+  return mapped.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+}
+
 export async function listInventory(): Promise<InventoryItem[]> {
   const client = getClient()
-  const { data, errors } = await client.models.InventoryItem.list()
-  if (errors?.length) console.error("[inventory/data] listInventory errors", errors)
-  return (data ?? [])
-    .map(fromAmplifyRecord)
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+  const primary = await client.models.InventoryItem.list({
+    selectionSet: TAX_INVENTORY_SELECTION,
+  })
+
+  if (!hasTaxSchemaReadError(primary.errors)) {
+    if (primary.errors?.length) {
+      console.error("[inventory/data] listInventory errors", primary.errors)
+    }
+    return mapInventoryRecords((primary.data ?? []) as Schema["InventoryItem"]["type"][])
+  }
+
+  const legacy = await client.models.InventoryItem.list({
+    selectionSet: LEGACY_INVENTORY_SELECTION,
+  })
+
+  if (legacy.errors?.length) {
+    console.error("[inventory/data] listInventory legacy fallback errors", legacy.errors)
+  }
+
+  return mapInventoryRecords((legacy.data ?? []) as Schema["InventoryItem"]["type"][])
 }
 
 export async function getInventoryItem(id: string): Promise<InventoryItem | null> {
   const client = getClient()
-  const { data, errors } = await client.models.InventoryItem.get({ id })
-  if (errors?.length) console.error("[inventory/data] getInventoryItem errors", errors)
-  return data ? fromAmplifyRecord(data) : null
+  const primary = await client.models.InventoryItem.get({
+    id,
+  }, {
+    selectionSet: TAX_INVENTORY_SELECTION,
+  })
+
+  if (!hasTaxSchemaReadError(primary.errors)) {
+    if (primary.errors?.length) {
+      console.error("[inventory/data] getInventoryItem errors", primary.errors)
+    }
+    if (!primary.data) {
+      return null
+    }
+
+    const item = fromAmplifyRecord(primary.data as Schema["InventoryItem"]["type"])
+    return {
+      ...item,
+      images: await refreshInventoryImages(item.images),
+    }
+  }
+
+  const legacy = await client.models.InventoryItem.get({
+    id,
+  }, {
+    selectionSet: LEGACY_INVENTORY_SELECTION,
+  })
+
+  if (legacy.errors?.length) {
+    console.error("[inventory/data] getInventoryItem legacy fallback errors", legacy.errors)
+  }
+
+  if (!legacy.data) {
+    return null
+  }
+
+  const item = fromAmplifyRecord(legacy.data as Schema["InventoryItem"]["type"])
+  return {
+    ...item,
+    images: await refreshInventoryImages(item.images),
+  }
 }
 
 export async function listPublicInventory(): Promise<InventoryItem[]> {
@@ -76,19 +160,47 @@ export async function listPublicInventory(): Promise<InventoryItem[]> {
 
   if (authState?.isSignedIn) {
     const client = getClient()
-    const { data, errors } = await client.models.InventoryItem.list()
-    if (errors?.length) console.error("[inventory/data] listPublicInventory userPool errors", errors)
-    return (data ?? [])
-      .map(fromAmplifyRecord)
-      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    const primary = await client.models.InventoryItem.list({
+      selectionSet: TAX_INVENTORY_SELECTION,
+    })
+
+    if (!hasTaxSchemaReadError(primary.errors)) {
+      if (primary.errors?.length) {
+        console.error("[inventory/data] listPublicInventory userPool errors", primary.errors)
+      }
+      return mapInventoryRecords((primary.data ?? []) as Schema["InventoryItem"]["type"][])
+    }
+
+    const legacy = await client.models.InventoryItem.list({
+      selectionSet: LEGACY_INVENTORY_SELECTION,
+    })
+
+    if (legacy.errors?.length) {
+      console.error("[inventory/data] listPublicInventory userPool legacy fallback errors", legacy.errors)
+    }
+
+    return mapInventoryRecords((legacy.data ?? []) as Schema["InventoryItem"]["type"][])
   }
 
   const client = getPublicClient()
-  const { data, errors } = await client.models.InventoryItem.list({
-    selectionSet: PUBLIC_INVENTORY_SELECTION,
+  const primary = await client.models.InventoryItem.list({
+    selectionSet: TAX_INVENTORY_SELECTION,
   })
-  if (errors?.length) console.error("[inventory/data] listPublicInventory apiKey errors", errors)
-  return ((data ?? []) as Schema["InventoryItem"]["type"][])
-    .map(fromAmplifyRecord)
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+
+  if (!hasTaxSchemaReadError(primary.errors)) {
+    if (primary.errors?.length) {
+      console.error("[inventory/data] listPublicInventory apiKey errors", primary.errors)
+    }
+    return mapInventoryRecords((primary.data ?? []) as Schema["InventoryItem"]["type"][])
+  }
+
+  const legacy = await client.models.InventoryItem.list({
+    selectionSet: LEGACY_INVENTORY_SELECTION,
+  })
+
+  if (legacy.errors?.length) {
+    console.error("[inventory/data] listPublicInventory apiKey legacy fallback errors", legacy.errors)
+  }
+
+  return mapInventoryRecords((legacy.data ?? []) as Schema["InventoryItem"]["type"][])
 }

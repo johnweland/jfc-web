@@ -32,7 +32,8 @@ type Action =
   | { type: "SET_ALL"; items: StoredFavorite[] }
   | { type: "ADD"; item: StoredFavorite }
   | { type: "REMOVE"; slug: string }
-  | { type: "SET_AMPLIFY_ID"; slug: string; amplifyId: string };
+  | { type: "SET_AMPLIFY_ID"; slug: string; amplifyId: string }
+  | { type: "SET_IMAGE_URLS"; imageUrls: Record<string, string | null> };
 
 // ─── Reducer ─────────────────────────────────────────────────────────────────
 
@@ -50,6 +51,17 @@ function reducer(state: StoredFavorite[], action: Action): StoredFavorite[] {
       return state.map((i) =>
         i.slug === action.slug ? { ...i, amplifyId: action.amplifyId } : i,
       );
+    case "SET_IMAGE_URLS":
+      return state.map((item) => {
+        if (!(item.slug in action.imageUrls)) {
+          return item;
+        }
+
+        return {
+          ...item,
+          imageUrl: action.imageUrls[item.slug] ?? undefined,
+        };
+      });
     default:
       return state;
   }
@@ -186,6 +198,62 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
 
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    if (items.length === 0) {
+      return;
+    }
+
+    const controller = new AbortController();
+    const slugs = Array.from(new Set(items.map((item) => item.slug)));
+
+    void fetch(`/api/favorites-images?${new URLSearchParams({ slug: slugs.join(",") }).toString()}`, {
+      signal: controller.signal,
+      cache: "no-store",
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          return null;
+        }
+
+        const payload = (await response.json()) as {
+          imageUrls?: Record<string, string | null>;
+        };
+        return payload.imageUrls ?? null;
+      })
+      .then((imageUrls) => {
+        if (!imageUrls) {
+          return;
+        }
+
+        const hasChanges = items.some((item) => {
+          if (!(item.slug in imageUrls)) {
+            return false;
+          }
+
+          const nextImageUrl = imageUrls[item.slug] ?? undefined;
+          return item.imageUrl !== nextImageUrl;
+        });
+
+        if (hasChanges) {
+          dispatch({ type: "SET_IMAGE_URLS", imageUrls });
+        }
+      })
+      .catch((error) => {
+        const err = error as Error;
+        const isTransientFetchFailure =
+          err.name === "AbortError" ||
+          (err.name === "TypeError" && err.message === "Failed to fetch");
+
+        if (!isTransientFetchFailure) {
+          console.error("[favorites] image refresh failed", error);
+        }
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [items]);
 
   const toggle = useCallback(
     async (item: FavoriteItem) => {

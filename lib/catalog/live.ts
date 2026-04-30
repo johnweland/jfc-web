@@ -1,10 +1,18 @@
 import "server-only"
 
 import { cache } from "react"
-import { cookies } from "next/headers"
-import { getUrl } from "aws-amplify/storage/server"
-import { runWithAmplifyServerContext } from "@/lib/auth/amplify-server"
+import {
+  getAllProducts,
+  getFeaturedProducts,
+  getProductBySlug,
+  getProductsByCategory,
+} from "@/lib/data"
+import { isAmplifyDataConfigured } from "@/lib/auth/amplify-server"
 import { listPublicInventory } from "@/lib/inventory/data"
+import { refreshInventoryImages } from "@/lib/inventory/image-urls"
+import { getStoreTaxSettings } from "@/lib/tax/settings"
+import { resolveInventoryTaxRate } from "@/lib/tax/shared"
+import { DEFAULT_APPAREL_SIZE, sortApparelSizes } from "@/lib/data/apparel-sizes"
 import type { InventoryImage, InventoryItem } from "@/lib/types/inventory"
 import type {
   Apparel,
@@ -125,38 +133,24 @@ async function resolveImageUrls(images?: InventoryImage[], placeholder = "/place
   }
 
   const orderedImages = [...images].sort((a, b) => a.order - b.order)
-
-  const urls = await Promise.all(
-    orderedImages.map(async (image) => {
-      if (!image.key) {
-        return image.url
-      }
-
-      try {
-        const result = await runWithAmplifyServerContext({
-          nextServerContext: { cookies },
-          operation: (contextSpec) =>
-            getUrl(contextSpec, {
-              path: image.key,
-              options: { expiresIn: 3600 },
-            }),
-        })
-        return result.url.toString()
-      } catch {
-        return image.url
-      }
-    }),
-  )
+  const hydratedImages = await refreshInventoryImages(orderedImages)
+  const urls = hydratedImages?.map((image) => image.url) ?? []
 
   return urls.filter((url): url is string => Boolean(url))
 }
 
-async function toFirearmProduct(item: InventoryItem, status: AvailabilityStatus): Promise<Firearm> {
+async function toFirearmProduct(
+  item: InventoryItem,
+  status: AvailabilityStatus,
+  taxRate: number,
+): Promise<Firearm> {
   return {
     slug: toProductSlug(item),
     name: item.name,
     sku: item.sku ?? item.id,
     price: item.price,
+    availableQuantity: item.quantity,
+    taxRate,
     status,
     category: "firearm",
     type: toFirearmType(item.firearm?.firearmType),
@@ -176,7 +170,11 @@ async function toFirearmProduct(item: InventoryItem, status: AvailabilityStatus)
   }
 }
 
-async function toPartProduct(item: InventoryItem, status: AvailabilityStatus): Promise<Part> {
+async function toPartProduct(
+  item: InventoryItem,
+  status: AvailabilityStatus,
+  taxRate: number,
+): Promise<Part> {
   const compatibility = [item.manufacturer, item.brand, item.model].filter(
     (value): value is string => Boolean(value),
   )
@@ -186,6 +184,8 @@ async function toPartProduct(item: InventoryItem, status: AvailabilityStatus): P
     name: item.name,
     sku: item.sku ?? item.id,
     price: item.price,
+    availableQuantity: item.quantity,
+    taxRate,
     status,
     category: "part",
     partType: item.category ?? item.model ?? item.brand ?? item.manufacturer ?? "Component",
@@ -196,7 +196,11 @@ async function toPartProduct(item: InventoryItem, status: AvailabilityStatus): P
   }
 }
 
-async function toApparelProduct(item: InventoryItem, status: AvailabilityStatus): Promise<Apparel> {
+async function toApparelProduct(
+  item: InventoryItem,
+  status: AvailabilityStatus,
+  taxRate: number,
+): Promise<Apparel> {
   const variants: ApparelVariant[] | undefined = item.apparel?.variants?.map((variant) => ({
     id: variant.id,
     size: variant.size.trim(),
@@ -206,23 +210,23 @@ async function toApparelProduct(item: InventoryItem, status: AvailabilityStatus)
     quantity: variant.quantity,
   }))
 
-  const sizes = Array.from(
-    new Set([
-      ...(variants?.map((variant) => variant.size).filter(Boolean) ?? []),
-      ...splitDelimitedValues(item.apparel?.size),
-    ]),
-  )
+  const sizes = sortApparelSizes([
+    ...(variants?.map((variant) => variant.size).filter(Boolean) ?? []),
+    ...splitDelimitedValues(item.apparel?.size),
+  ])
 
   return {
     slug: toProductSlug(item),
     name: item.name,
     sku: item.sku ?? item.id,
     price: item.price,
+    availableQuantity: item.quantity,
+    taxRate,
     status,
     category: "apparel",
     apparelType: item.apparel?.apparelType ?? "Accessory",
     material: item.apparel?.material ?? "Tactical Fabric",
-    sizes: sizes.length > 0 ? sizes : ["One Size"],
+    sizes: sizes.length > 0 ? sizes : [DEFAULT_APPAREL_SIZE],
     colorSwatches: toColorSwatches(item),
     variants,
     images: await resolveImageUrls(item.images, "/placeholder-apparel.jpg"),
@@ -237,20 +241,32 @@ async function toProduct(item: InventoryItem): Promise<Product | null> {
     return null
   }
 
+  const settings = await getStoreTaxSettings()
+  const taxRate = resolveInventoryTaxRate(
+    item.itemType,
+    item.taxMode,
+    item.customTaxRate,
+    settings,
+  )
+
   switch (item.itemType) {
     case "FIREARM":
-      return toFirearmProduct(item, status)
+      return toFirearmProduct(item, status, taxRate)
     case "APPAREL":
-      return toApparelProduct(item, status)
+      return toApparelProduct(item, status, taxRate)
     case "PART":
     case "ACCESSORY":
-      return toPartProduct(item, status)
+      return toPartProduct(item, status, taxRate)
     default:
       return null
   }
 }
 
 export const getLiveCatalog = cache(async (): Promise<Product[]> => {
+  if (!isAmplifyDataConfigured) {
+    return getAllProducts()
+  }
+
   const items = await listPublicInventory()
   const products = await Promise.all(items.map(toProduct))
   return products.filter((product): product is Product => Boolean(product))
@@ -259,6 +275,10 @@ export const getLiveCatalog = cache(async (): Promise<Product[]> => {
 export async function getLiveProductsByCategory<C extends ProductCategory>(
   category: C,
 ): Promise<CategoryProductMap[C][]> {
+  if (!isAmplifyDataConfigured) {
+    return getProductsByCategory(category) as CategoryProductMap[C][]
+  }
+
   const products = await getLiveCatalog()
   return products.filter(
     (product): product is CategoryProductMap[C] => product.category === category,
@@ -269,6 +289,10 @@ export async function getLiveProductBySlug<C extends ProductCategory>(
   slug: string,
   category?: C,
 ): Promise<CategoryProductMap[C] | Product | undefined> {
+  if (!isAmplifyDataConfigured) {
+    return getProductBySlug(slug, category) as CategoryProductMap[C] | Product | undefined
+  }
+
   const products = category
     ? await getLiveProductsByCategory(category)
     : await getLiveCatalog()
@@ -277,6 +301,10 @@ export async function getLiveProductBySlug<C extends ProductCategory>(
 }
 
 export async function getLiveFeaturedProducts() {
+  if (!isAmplifyDataConfigured) {
+    return getFeaturedProducts()
+  }
+
   const products = await getLiveCatalog()
   return products.slice(0, 4)
 }

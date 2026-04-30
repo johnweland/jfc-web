@@ -5,6 +5,7 @@ import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useCart } from "@/lib/cart/context";
+import { DEFAULT_APPAREL_SIZE } from "@/lib/data/apparel-sizes";
 import { FavoriteButton } from "@/components/ui/favorite-button";
 import type { Apparel } from "@/lib/data/types";
 
@@ -24,7 +25,9 @@ export function ApparelDetailActions({ item }: ApparelDetailActionsProps) {
     () => defaultVariant?.color ?? item.colorSwatches[0]?.name ?? "",
   );
   const [selectedSize, setSelectedSize] = useState(
-    () => defaultVariant?.size ?? (item.sizes[0] === "One Size" ? "One Size" : ""),
+    () =>
+      defaultVariant?.size ??
+      (item.sizes[0] === DEFAULT_APPAREL_SIZE ? DEFAULT_APPAREL_SIZE : ""),
   );
 
   const isBackordered = item.status === "backordered";
@@ -105,8 +108,11 @@ export function ApparelDetailActions({ item }: ApparelDetailActionsProps) {
       sku: effectiveSku,
       price: item.price,
       category: "apparel",
+      imageUrl: item.images[0],
+      maxQuantity: selectedVariant?.quantity ?? item.availableQuantity,
+      taxRate: item.taxRate,
       requiresFFL: false,
-      size: selectedSize !== "One Size" ? selectedSize : undefined,
+      size: selectedSize !== DEFAULT_APPAREL_SIZE ? selectedSize : undefined,
       color: selectedColor || undefined,
     });
   }
@@ -157,7 +163,7 @@ export function ApparelDetailActions({ item }: ApparelDetailActionsProps) {
       )}
 
       {/* Sizes */}
-      {item.sizes[0] !== "One Size" && (
+      {item.sizes[0] !== DEFAULT_APPAREL_SIZE && (
         <div>
           <p
             className="font-display text-[10px] font-semibold uppercase text-primary mb-3"
@@ -194,7 +200,7 @@ export function ApparelDetailActions({ item }: ApparelDetailActionsProps) {
         size="lg"
         disabled={
           isBackordered ||
-          (item.sizes[0] !== "One Size" && !selectedSize) ||
+          (item.sizes[0] !== DEFAULT_APPAREL_SIZE && !selectedSize) ||
           (hasVariantInventory && !selectedVariant)
         }
         onClick={handleAddToCart}

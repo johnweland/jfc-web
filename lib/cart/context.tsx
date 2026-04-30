@@ -7,6 +7,7 @@ import {
   useCallback,
   type ReactNode,
 } from "react";
+import { calculateTaxAmount } from "@/lib/tax/shared";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -16,6 +17,9 @@ export interface CartItem {
   sku: string;
   price: number;
   category: "firearm" | "part" | "apparel";
+  imageUrl?: string;
+  maxQuantity?: number;
+  taxRate: number;
   requiresFFL: boolean;
   quantity: number;
   /** Apparel only */
@@ -39,18 +43,35 @@ type Action =
 
 // ─── Reducer ─────────────────────────────────────────────────────────────────
 
+function clampQuantity(quantity: number, maxQuantity?: number) {
+  if (maxQuantity == null || maxQuantity < 1) {
+    return Math.max(1, quantity)
+  }
+
+  return Math.max(1, Math.min(quantity, maxQuantity))
+}
+
 function cartReducer(state: CartState, action: Action): CartState {
   switch (action.type) {
     case "ADD": {
       const { quantity = 1, ...item } = action.payload;
       const existing = state.items.find((i) => i.slug === item.slug);
       if (existing) {
+        const nextQuantity = clampQuantity(
+          existing.quantity + quantity,
+          item.maxQuantity ?? existing.maxQuantity,
+        )
         return {
           ...state,
           isOpen: true,
           items: state.items.map((i) =>
             i.slug === item.slug
-              ? { ...i, quantity: i.quantity + quantity }
+              ? {
+                  ...i,
+                  ...item,
+                  maxQuantity: item.maxQuantity ?? i.maxQuantity,
+                  quantity: nextQuantity,
+                }
               : i
           ),
         };
@@ -58,7 +79,10 @@ function cartReducer(state: CartState, action: Action): CartState {
       return {
         ...state,
         isOpen: true,
-        items: [...state.items, { ...item, quantity }],
+        items: [
+          ...state.items,
+          { ...item, quantity: clampQuantity(quantity, item.maxQuantity) },
+        ],
       };
     }
     case "REMOVE":
@@ -76,7 +100,9 @@ function cartReducer(state: CartState, action: Action): CartState {
       return {
         ...state,
         items: state.items.map((i) =>
-          i.slug === action.slug ? { ...i, quantity: action.quantity } : i
+          i.slug === action.slug
+            ? { ...i, quantity: clampQuantity(action.quantity, i.maxQuantity) }
+            : i
         ),
       };
     }
@@ -98,6 +124,8 @@ interface CartContextValue {
   isOpen: boolean;
   itemCount: number;
   subtotal: number;
+  estimatedTax: number;
+  total: number;
   addItem: (item: Omit<CartItem, "quantity"> & { quantity?: number }) => void;
   removeItem: (slug: string) => void;
   setQuantity: (slug: string, quantity: number) => void;
@@ -136,6 +164,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
     (sum, i) => sum + i.price * i.quantity,
     0
   );
+  const estimatedTax = state.items.reduce(
+    (sum, i) => sum + calculateTaxAmount(i.price * i.quantity, i.taxRate ?? 0),
+    0,
+  );
+  const total = subtotal + estimatedTax;
 
   return (
     <CartContext.Provider
@@ -144,6 +177,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         isOpen: state.isOpen,
         itemCount,
         subtotal,
+        estimatedTax,
+        total,
         addItem,
         removeItem,
         setQuantity,

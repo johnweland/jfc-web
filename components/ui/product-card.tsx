@@ -19,7 +19,7 @@ function formatPrice(price: number) {
 
 function getCtaLabel(product: Product): string {
   if (product.category === "firearm") return "CONFIGURE";
-  if (product.category === "apparel") return "QUICK ADD";
+  if (product.category === "apparel") return "SELECT OPTIONS";
   return "ADD TO CART";
 }
 
@@ -47,8 +47,8 @@ export function ProductCard({ product, className }: ProductCardProps) {
   const { isFavorited, toggle: toggleFavorite } = useFavorites();
 
   function handleCta(e: React.MouseEvent) {
-    // Firearms go to detail page — don't add to cart from the card
-    if (product.category === "firearm") return;
+    // Firearms and apparel require a detail-page step before carting.
+    if (product.category === "firearm" || product.category === "apparel") return;
     e.preventDefault();
     if (isOutOfStock) return;
     addItem({
@@ -57,11 +57,10 @@ export function ProductCard({ product, className }: ProductCardProps) {
       sku: product.sku,
       price: product.price,
       category: product.category,
+      imageUrl: product.images[0],
+      maxQuantity: product.availableQuantity,
+      taxRate: product.taxRate,
       requiresFFL: product.requiresFFL,
-      // For apparel, size/color are chosen on detail page; add with defaults
-      ...(product.category === "apparel" && {
-        color: product.colorSwatches[0]?.name,
-      }),
     });
   }
 

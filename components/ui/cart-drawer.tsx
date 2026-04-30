@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   X,
   Minus,
@@ -23,7 +24,7 @@ function formatPrice(price: number) {
 }
 
 export function CartDrawer() {
-  const { items, isOpen, subtotal, removeItem, setQuantity, closeCart } =
+  const { items, isOpen, subtotal, estimatedTax, total, removeItem, setQuantity, closeCart } =
     useCart();
 
   // Lock body scroll when drawer is open
@@ -127,14 +128,29 @@ export function CartDrawer() {
             <ul className="divide-y divide-border/10">
               {items.map((item) => (
                 <li key={item.slug} className="flex gap-4 px-6 py-5">
-                  {/* Image placeholder */}
-                  <div className="size-20 shrink-0 bg-surface-container-low flex items-center justify-center">
-                    <span
-                      className="text-[8px] uppercase text-muted-foreground/30"
-                      style={{ letterSpacing: "0.1em" }}
-                    >
-                      {item.category.toUpperCase()}
-                    </span>
+                  {(() => {
+                    const atLimit =
+                      item.maxQuantity != null && item.quantity >= item.maxQuantity;
+
+                    return (
+                      <>
+                  <div className="relative size-20 shrink-0 overflow-hidden bg-surface-container-low flex items-center justify-center">
+                    {item.imageUrl ? (
+                      <Image
+                        src={item.imageUrl}
+                        alt={item.name}
+                        fill
+                        className="object-cover"
+                        sizes="80px"
+                      />
+                    ) : (
+                      <span
+                        className="text-[8px] uppercase text-muted-foreground/30"
+                        style={{ letterSpacing: "0.1em" }}
+                      >
+                        {item.category.toUpperCase()}
+                      </span>
+                    )}
                   </div>
 
                   {/* Item details */}
@@ -205,20 +221,24 @@ export function CartDrawer() {
                           className="w-8 text-center text-xs font-semibold text-foreground"
                           style={{ letterSpacing: "0.04em" }}
                         >
-                          {item.quantity}
+                        {item.quantity}
                         </span>
                         <button
+                          disabled={atLimit}
                           onClick={() =>
                             setQuantity(item.slug, item.quantity + 1)
                           }
                           aria-label="Increase quantity"
-                          className="flex size-7 items-center justify-center text-muted-foreground transition-colors hover:text-foreground hover:bg-surface-container-high"
+                          className="flex size-7 items-center justify-center text-muted-foreground transition-colors hover:text-foreground hover:bg-surface-container-high disabled:cursor-not-allowed disabled:text-muted-foreground/30 disabled:hover:bg-transparent disabled:hover:text-muted-foreground/30"
                         >
                           <Plus className="size-3" />
                         </button>
                       </div>
                     </div>
                   </div>
+                      </>
+                    );
+                  })()}
                 </li>
               ))}
             </ul>
@@ -238,7 +258,7 @@ export function CartDrawer() {
               </div>
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span style={{ letterSpacing: "0.08em" }}>ESTIMATED TAX</span>
-                <span style={{ letterSpacing: "0.06em" }}>TBD</span>
+                <span className="font-semibold text-foreground">{formatPrice(estimatedTax)}</span>
               </div>
               <Separator className="bg-border/20 my-1" />
               <div className="flex items-center justify-between">
@@ -249,7 +269,7 @@ export function CartDrawer() {
                   TOTAL ORDER
                 </span>
                 <span className="font-display text-base font-bold text-primary">
-                  {formatPrice(subtotal)}
+                  {formatPrice(total)}
                 </span>
               </div>
             </div>
@@ -257,11 +277,14 @@ export function CartDrawer() {
             {/* CTAs */}
             <div className="flex flex-col gap-2">
               <Button
+                asChild
                 className="gradient-primary text-primary-foreground font-bold uppercase rounded-none border-0 w-full justify-center gap-2 text-xs"
                 style={{ letterSpacing: "0.12em" }}
+                onClick={closeCart}
               >
-                PROCEED TO CHECKOUT
-                <ArrowRight className="size-3.5" />
+                <Link href="/checkout">PROCEED TO CHECKOUT
+                  <ArrowRight className="size-3.5" />
+                </Link>
               </Button>
               <Button
                 asChild
