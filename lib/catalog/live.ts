@@ -1,6 +1,13 @@
 import "server-only"
 
 import { cache } from "react"
+import {
+  getAllProducts,
+  getFeaturedProducts,
+  getProductBySlug,
+  getProductsByCategory,
+} from "@/lib/data"
+import { isAmplifyDataConfigured } from "@/lib/auth/amplify-server"
 import { listPublicInventory } from "@/lib/inventory/data"
 import { refreshInventoryImages } from "@/lib/inventory/image-urls"
 import { getStoreTaxSettings } from "@/lib/tax/settings"
@@ -256,6 +263,10 @@ async function toProduct(item: InventoryItem): Promise<Product | null> {
 }
 
 export const getLiveCatalog = cache(async (): Promise<Product[]> => {
+  if (!isAmplifyDataConfigured) {
+    return getAllProducts()
+  }
+
   const items = await listPublicInventory()
   const products = await Promise.all(items.map(toProduct))
   return products.filter((product): product is Product => Boolean(product))
@@ -264,6 +275,10 @@ export const getLiveCatalog = cache(async (): Promise<Product[]> => {
 export async function getLiveProductsByCategory<C extends ProductCategory>(
   category: C,
 ): Promise<CategoryProductMap[C][]> {
+  if (!isAmplifyDataConfigured) {
+    return getProductsByCategory(category) as CategoryProductMap[C][]
+  }
+
   const products = await getLiveCatalog()
   return products.filter(
     (product): product is CategoryProductMap[C] => product.category === category,
@@ -274,6 +289,10 @@ export async function getLiveProductBySlug<C extends ProductCategory>(
   slug: string,
   category?: C,
 ): Promise<CategoryProductMap[C] | Product | undefined> {
+  if (!isAmplifyDataConfigured) {
+    return getProductBySlug(slug, category) as CategoryProductMap[C] | Product | undefined
+  }
+
   const products = category
     ? await getLiveProductsByCategory(category)
     : await getLiveCatalog()
@@ -282,6 +301,10 @@ export async function getLiveProductBySlug<C extends ProductCategory>(
 }
 
 export async function getLiveFeaturedProducts() {
+  if (!isAmplifyDataConfigured) {
+    return getFeaturedProducts()
+  }
+
   const products = await getLiveCatalog()
   return products.slice(0, 4)
 }

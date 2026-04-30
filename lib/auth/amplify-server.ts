@@ -30,6 +30,10 @@ export const isAmplifyAuthConfigured = Boolean(
     amplifyConfig.Auth?.Cognito?.userPoolClientId
 );
 
+export const isAmplifyDataConfigured = Boolean(
+  amplifyConfig.API?.GraphQL?.endpoint,
+);
+
 export const cognitoRegion =
   amplifyConfig.Auth?.Cognito?.userPoolId?.split("_")[0] ?? null;
 
