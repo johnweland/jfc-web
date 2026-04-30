@@ -2,8 +2,8 @@ import "server-only"
 
 import { generateServerClientUsingCookies } from "@aws-amplify/adapter-nextjs/data"
 import { cookies } from "next/headers"
-import outputs from "@/amplify_outputs.json"
 import type { Schema } from "@/amplify/data/resource"
+import { amplifyOutputs } from "@/lib/auth/amplify-server"
 import { getServerAuthState } from "@/lib/auth/server"
 import type { InventoryItem } from "@/lib/types/inventory"
 import { refreshInventoryImages } from "./image-urls"
@@ -49,7 +49,7 @@ const TAX_INVENTORY_SELECTION = [
 
 function getClient() {
   return generateServerClientUsingCookies<Schema>({
-    config: outputs,
+    config: amplifyOutputs,
     cookies,
     authMode: "userPool",
   })
@@ -57,7 +57,7 @@ function getClient() {
 
 function getPublicClient() {
   return generateServerClientUsingCookies<Schema>({
-    config: outputs,
+    config: amplifyOutputs,
     cookies,
     authMode: "apiKey",
   })

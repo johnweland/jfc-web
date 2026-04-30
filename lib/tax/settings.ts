@@ -3,13 +3,13 @@ import "server-only"
 import { cache } from "react"
 import { cookies } from "next/headers"
 import { generateServerClientUsingCookies } from "@aws-amplify/adapter-nextjs/data"
-import outputs from "@/amplify_outputs.json"
 import type { Schema } from "@/amplify/data/resource"
+import { amplifyOutputs } from "@/lib/auth/amplify-server"
 import { EMPTY_TAX_SETTINGS, TAX_SETTINGS_ID, type StoreTaxSettings } from "./shared"
 
 function getPublicClient() {
   return generateServerClientUsingCookies<Schema>({
-    config: outputs,
+    config: amplifyOutputs,
     cookies,
     authMode: "apiKey",
   })
