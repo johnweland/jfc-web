@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowRight, Shield, Zap, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/ui/product-card";
-import { getFeaturedProducts } from "@/lib/data";
+import { getLiveFeaturedProducts } from "@/lib/catalog/live";
 
 const categories = [
   {
@@ -31,8 +31,10 @@ const categories = [
   },
 ];
 
-export default function HomePage() {
-  const featured = getFeaturedProducts();
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
+  const featured = await getLiveFeaturedProducts();
 
   return (
     <>

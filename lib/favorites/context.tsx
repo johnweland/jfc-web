@@ -5,8 +5,12 @@ import {
   useContext,
   useReducer,
   useCallback,
+  useEffect,
   type ReactNode,
 } from "react";
+import { generateClient } from "aws-amplify/data";
+import { getCurrentUser } from "aws-amplify/auth";
+import type { Schema } from "@/amplify/data/resource";
 import type { AvailabilityStatus } from "@/lib/data/types";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -18,31 +22,62 @@ export interface FavoriteItem {
   price: number;
   category: "firearm" | "part" | "apparel";
   status: AvailabilityStatus;
+  imageUrl?: string;
 }
 
+// Internal record adds the Amplify row ID so we can delete it later
+type StoredFavorite = FavoriteItem & { amplifyId?: string };
+
 type Action =
-  | { type: "TOGGLE"; item: FavoriteItem }
-  | { type: "REMOVE"; slug: string };
+  | { type: "SET_ALL"; items: StoredFavorite[] }
+  | { type: "ADD"; item: StoredFavorite }
+  | { type: "REMOVE"; slug: string }
+  | { type: "SET_AMPLIFY_ID"; slug: string; amplifyId: string };
 
 // ─── Reducer ─────────────────────────────────────────────────────────────────
 
-function favoritesReducer(
-  state: FavoriteItem[],
-  action: Action
-): FavoriteItem[] {
+function reducer(state: StoredFavorite[], action: Action): StoredFavorite[] {
   switch (action.type) {
-    case "TOGGLE": {
-      const exists = state.some((i) => i.slug === action.item.slug);
-      return exists
-        ? state.filter((i) => i.slug !== action.item.slug)
+    case "SET_ALL":
+      return action.items;
+    case "ADD":
+      return state.some((i) => i.slug === action.item.slug)
+        ? state
         : [...state, action.item];
-    }
     case "REMOVE":
       return state.filter((i) => i.slug !== action.slug);
+    case "SET_AMPLIFY_ID":
+      return state.map((i) =>
+        i.slug === action.slug ? { ...i, amplifyId: action.amplifyId } : i,
+      );
     default:
       return state;
   }
 }
+
+// ─── localStorage helpers ─────────────────────────────────────────────────────
+
+const STORAGE_KEY = "jfc-favorites";
+
+function loadFromStorage(): StoredFavorite[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as StoredFavorite[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveToStorage(items: StoredFavorite[]) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  } catch { /* storage unavailable */ }
+}
+
+// ─── Amplify client ───────────────────────────────────────────────────────────
+
+const client = generateClient<Schema>();
 
 // ─── Context ─────────────────────────────────────────────────────────────────
 
@@ -58,20 +93,164 @@ const FavoritesContext = createContext<FavoritesContextValue | null>(null);
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
 export function FavoritesProvider({ children }: { children: ReactNode }) {
-  const [favorites, dispatch] = useReducer(favoritesReducer, []);
+  // userId is the Cognito sub — null means not authenticated
+  const [userId, setUserId] = useReducer(
+    (_: string | null, next: string | null) => next,
+    null,
+  );
+
+  // Always start empty so server and client render the same initial HTML.
+  // localStorage is loaded in the effect below after hydration completes.
+  const [items, dispatch] = useReducer(reducer, []);
+
+  // Persist to localStorage on every change (works for both auth states)
+  useEffect(() => {
+    saveToStorage(items);
+  }, [items]);
+
+  // On mount: load localStorage, then check auth and sync with Amplify if logged in.
+  // The `cancelled` flag prevents React Strict Mode's double-invoke from creating
+  // duplicate Amplify records (second invocation's cleanup sets cancelled = true).
+  useEffect(() => {
+    let cancelled = false;
+
+    // Load localStorage first — client-only, runs after hydration
+    const stored = loadFromStorage();
+    if (stored.length > 0) {
+      dispatch({ type: "SET_ALL", items: stored });
+    }
+
+    getCurrentUser()
+      .then(async ({ userId: sub }) => {
+        if (cancelled) return;
+        setUserId(sub);
+
+        const { data: rows } = await client.models.CustomerFavorite.list({
+          filter: { customerId: { eq: sub } },
+        });
+
+        if (cancelled) return;
+
+        // Deduplicate Amplify rows by slug (self-heals any prior double-creates).
+        // Extra rows are deleted in the background.
+        const seenSlugs = new Set<string>();
+        const amplifyFavs: StoredFavorite[] = [];
+        for (const r of rows ?? []) {
+          if (!seenSlugs.has(r.slug)) {
+            seenSlugs.add(r.slug);
+            amplifyFavs.push({
+              slug: r.slug,
+              name: r.name,
+              sku: r.sku ?? "",
+              price: r.price,
+              category: r.category as FavoriteItem["category"],
+              status: r.status as AvailabilityStatus,
+              imageUrl: r.imageUrl ?? undefined,
+              amplifyId: r.id,
+            });
+          } else {
+            client.models.CustomerFavorite.delete({ id: r.id }).catch(() => {});
+          }
+        }
+
+        // Push any localStorage-only items up to Amplify (login merge)
+        const unsynced = stored.filter(
+          (l) => !amplifyFavs.some((a) => a.slug === l.slug),
+        );
+
+        const merged: StoredFavorite[] = [...amplifyFavs];
+
+        for (const item of unsynced) {
+          if (cancelled) break;
+          const { data: created } = await client.models.CustomerFavorite.create({
+            customerId: sub,
+            slug: item.slug,
+            name: item.name,
+            sku: item.sku,
+            price: item.price,
+            category: item.category,
+            status: item.status,
+            imageUrl: item.imageUrl,
+          }).catch(() => ({ data: null }));
+
+          merged.push({ ...item, amplifyId: created?.id ?? undefined });
+        }
+
+        if (!cancelled) {
+          dispatch({ type: "SET_ALL", items: merged });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setUserId(null);
+      });
+
+    return () => { cancelled = true; };
+  }, []);
 
   const toggle = useCallback(
-    (item: FavoriteItem) => dispatch({ type: "TOGGLE", item }),
-    []
+    async (item: FavoriteItem) => {
+      const existing = items.find((i) => i.slug === item.slug);
+
+      if (existing) {
+        // Optimistic remove
+        dispatch({ type: "REMOVE", slug: item.slug });
+        if (userId && existing.amplifyId) {
+          await client.models.CustomerFavorite.delete({
+            id: existing.amplifyId,
+          }).catch(() => {});
+        }
+      } else {
+        // Optimistic add
+        dispatch({ type: "ADD", item });
+        if (userId) {
+          const { data: created } = await client.models.CustomerFavorite.create({
+            customerId: userId,
+            slug: item.slug,
+            name: item.name,
+            sku: item.sku,
+            price: item.price,
+            category: item.category,
+            status: item.status,
+            imageUrl: item.imageUrl,
+          }).catch(() => ({ data: null }));
+
+          if (created) {
+            dispatch({ type: "SET_AMPLIFY_ID", slug: item.slug, amplifyId: created.id });
+          }
+        }
+      }
+    },
+    [items, userId],
   );
+
   const remove = useCallback(
-    (slug: string) => dispatch({ type: "REMOVE", slug }),
-    []
+    async (slug: string) => {
+      const existing = items.find((i) => i.slug === slug);
+      dispatch({ type: "REMOVE", slug });
+      if (userId && existing?.amplifyId) {
+        await client.models.CustomerFavorite.delete({
+          id: existing.amplifyId,
+        }).catch(() => {});
+      }
+    },
+    [items, userId],
   );
+
   const isFavorited = useCallback(
-    (slug: string) => favorites.some((i) => i.slug === slug),
-    [favorites]
+    (slug: string) => items.some((i) => i.slug === slug),
+    [items],
   );
+
+  // Strip internal amplifyId before exposing through context
+  const favorites: FavoriteItem[] = items.map((item) => ({
+    slug: item.slug,
+    name: item.name,
+    sku: item.sku,
+    price: item.price,
+    category: item.category,
+    status: item.status,
+    imageUrl: item.imageUrl,
+  }));
 
   return (
     <FavoritesContext.Provider value={{ favorites, isFavorited, toggle, remove }}>

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import { ConfigureAmplify } from "@/components/providers/configure-amplify";
-import { amplifyOutputs } from "@/lib/auth/amplify-server";
 import "./globals.css";
 
 const fontSans = Inter({
@@ -35,7 +34,7 @@ export default function RootLayout({
       <body
         className={`${fontSans.variable} ${fontDisplay.variable} ${fontMono.variable} antialiased min-h-screen flex flex-col`}
       >
-        <ConfigureAmplify outputs={amplifyOutputs} />
+        <ConfigureAmplify />
         {children}
       </body>
     </html>

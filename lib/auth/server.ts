@@ -116,12 +116,18 @@ export const getServerAuthState = cache(async (): Promise<AuthUserState | null> 
       asString(idTokenPayload.email) ??
       currentUser.signInDetails?.loginId ??
       null;
+    const cognitoSub =
+      asString(idTokenPayload.sub) ??
+      asString(accessTokenPayload.sub) ??
+      currentUser.userId ??
+      null;
     const username =
       asString(idTokenPayload["cognito:username"]) ?? currentUser.username ?? null;
     const mfa = await getServerMfaState(session.tokens?.accessToken?.toString());
     const role = getUserRole({ groups });
 
     return {
+      cognitoSub,
       email,
       groups,
       isSignedIn: true,

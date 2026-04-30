@@ -3,12 +3,12 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { AvailabilityBadge } from "@/components/ui/availability-badge";
 import { ProductCard } from "@/components/ui/product-card";
+import { ProductImageGallery } from "@/components/catalog/product-image-gallery";
 import { ApparelDetailActions } from "@/components/ui/apparel-detail-actions";
-import { apparel } from "@/lib/data/apparel";
+import { getLiveProductBySlug, getLiveProductsByCategory } from "@/lib/catalog/live";
+import type { Apparel } from "@/lib/data/types";
 
-export function generateStaticParams() {
-  return apparel.map((a) => ({ slug: a.slug }));
-}
+export const dynamic = "force-dynamic";
 
 function formatPrice(price: number) {
   return new Intl.NumberFormat("en-US", {
@@ -23,11 +23,13 @@ interface Props {
 
 export default async function ApparelDetailPage({ params }: Props) {
   const { slug } = await params;
-  const item = apparel.find((a) => a.slug === slug);
+  const item = (await getLiveProductBySlug(slug, "apparel")) as Apparel | undefined;
 
   if (!item) notFound();
 
-  const related = apparel.filter((a) => a.slug !== slug).slice(0, 3);
+  const related = ((await getLiveProductsByCategory("apparel")) as Apparel[])
+    .filter((a) => a.slug !== slug)
+    .slice(0, 3);
 
   return (
     <>
@@ -50,14 +52,11 @@ export default async function ApparelDetailPage({ params }: Props) {
         <div className="mx-auto max-w-screen-2xl px-6 lg:px-12">
           <div className="grid grid-cols-1 gap-16 lg:grid-cols-2">
             {/* Image */}
-            <div className="aspect-[4/3] bg-surface-container-low flex items-center justify-center">
-              <span
-                className="font-display text-sm uppercase text-muted-foreground/30 tracking-widest"
-                style={{ letterSpacing: "0.2em" }}
-              >
-                APPAREL IMAGE
-              </span>
-            </div>
+            <ProductImageGallery
+              images={item.images}
+              productName={item.name}
+              emptyLabel="APPAREL IMAGE"
+            />
 
             {/* Details */}
             <div className="flex flex-col gap-6">

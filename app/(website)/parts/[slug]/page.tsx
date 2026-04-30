@@ -1,16 +1,16 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Check } from "lucide-react";
+import { ProductImageGallery } from "@/components/catalog/product-image-gallery";
 import { Separator } from "@/components/ui/separator";
 import { AvailabilityBadge } from "@/components/ui/availability-badge";
 import { ProductCard } from "@/components/ui/product-card";
 import { AddToCartButton } from "@/components/ui/add-to-cart-button";
 import { FavoriteButton } from "@/components/ui/favorite-button";
-import { parts } from "@/lib/data/parts";
+import { getLiveProductBySlug, getLiveProductsByCategory } from "@/lib/catalog/live";
+import type { Part } from "@/lib/data/types";
 
-export function generateStaticParams() {
-  return parts.map((p) => ({ slug: p.slug }));
-}
+export const dynamic = "force-dynamic";
 
 function formatPrice(price: number) {
   return new Intl.NumberFormat("en-US", {
@@ -25,11 +25,13 @@ interface Props {
 
 export default async function PartDetailPage({ params }: Props) {
   const { slug } = await params;
-  const part = parts.find((p) => p.slug === slug);
+  const part = (await getLiveProductBySlug(slug, "part")) as Part | undefined;
 
   if (!part) notFound();
 
-  const related = parts.filter((p) => p.slug !== slug).slice(0, 3);
+  const related = ((await getLiveProductsByCategory("part")) as Part[])
+    .filter((p) => p.slug !== slug)
+    .slice(0, 3);
 
   return (
     <>
@@ -52,14 +54,11 @@ export default async function PartDetailPage({ params }: Props) {
         <div className="mx-auto max-w-screen-2xl px-6 lg:px-12">
           <div className="grid grid-cols-1 gap-16 lg:grid-cols-2">
             {/* Image */}
-            <div className="aspect-[4/3] bg-surface-container-low flex items-center justify-center">
-              <span
-                className="font-display text-sm uppercase text-muted-foreground/30 tracking-widest"
-                style={{ letterSpacing: "0.2em" }}
-              >
-                PART IMAGE
-              </span>
-            </div>
+            <ProductImageGallery
+              images={part.images}
+              productName={part.name}
+              emptyLabel="PART IMAGE"
+            />
 
             {/* Details */}
             <div className="flex flex-col gap-6">
@@ -142,6 +141,7 @@ export default async function PartDetailPage({ params }: Props) {
                   price: part.price,
                   category: "part",
                   status: part.status,
+                  imageUrl: part.images[0],
                 }}
               />
             </div>

@@ -1,5 +1,5 @@
 export type ProductCategory = "firearm" | "part" | "apparel";
-export type FirearmType = "rifle" | "handgun" | "shotgun" | "other";
+export type FirearmType = "rifle" | "handgun" | "shotgun" | "receiver" | "other";
 export type AvailabilityStatus =
   | "in_stock"
   | "low_stock"
@@ -50,12 +50,22 @@ export interface ColorSwatch {
   hex: string;
 }
 
+export interface ApparelVariant {
+  id: string;
+  size: string;
+  color: string;
+  colorHex?: string;
+  sku?: string;
+  quantity: number;
+}
+
 export interface Apparel extends BaseProduct {
   category: "apparel";
   apparelType: string;
   material: string;            // e.g. "Heavyweight Cotton, 6.5oz"
   sizes: string[];
   colorSwatches: ColorSwatch[];
+  variants?: ApparelVariant[];
   requiresFFL: false;
 }
 
