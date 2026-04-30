@@ -185,7 +185,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       });
 
     return () => { cancelled = true; };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const toggle = useCallback(
     async (item: FavoriteItem) => {
@@ -242,9 +242,15 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   );
 
   // Strip internal amplifyId before exposing through context
-  const favorites: FavoriteItem[] = items.map(
-    ({ amplifyId: _id, ...rest }) => rest,
-  );
+  const favorites: FavoriteItem[] = items.map((item) => ({
+    slug: item.slug,
+    name: item.name,
+    sku: item.sku,
+    price: item.price,
+    category: item.category,
+    status: item.status,
+    imageUrl: item.imageUrl,
+  }));
 
   return (
     <FavoritesContext.Provider value={{ favorites, isFavorited, toggle, remove }}>

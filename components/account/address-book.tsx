@@ -464,6 +464,7 @@ export function AddressBook({ customer }: { customer: CustomerIdentity }) {
   }, [customer.customerId]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadRecords();
   }, [loadRecords]);
 

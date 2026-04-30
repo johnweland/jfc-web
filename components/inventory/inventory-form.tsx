@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Plus, Trash2 } from "lucide-react";
@@ -200,17 +200,13 @@ export function InventoryForm({
     initialData?.images ?? [],
   );
 
-  useEffect(() => {
-    if (itemType !== "APPAREL" || apparelVariants.length === 0) {
-      return;
-    }
-
-    const totalQuantity = apparelVariants.reduce(
-      (sum, variant) => sum + Math.max(0, variant.quantity || 0),
-      0,
-    );
-    setQuantity(totalQuantity.toString());
-  }, [apparelVariants, itemType]);
+  // Derived: when APPAREL with variants, show the summed quantity without storing it in state
+  const apparelTotalQuantity =
+    itemType === "APPAREL" && apparelVariants.length > 0
+      ? apparelVariants.reduce((sum, v) => sum + Math.max(0, v.quantity || 0), 0)
+      : null;
+  const displayQuantity =
+    apparelTotalQuantity !== null ? apparelTotalQuantity.toString() : quantity;
 
   function updateApparelVariant(
     variantId: string,
@@ -508,13 +504,13 @@ export function InventoryForm({
               type="number"
               min="0"
               step="1"
-              value={quantity}
+              value={displayQuantity}
               onChange={(e) => setQuantity(e.target.value)}
               required
-              disabled={itemType === "APPAREL" && apparelVariants.length > 0}
+              disabled={apparelTotalQuantity !== null}
               className="h-9 font-mono"
             />
-            {itemType === "APPAREL" && apparelVariants.length > 0 && (
+            {apparelTotalQuantity !== null && (
               <p className="text-xs text-muted-foreground">
                 Auto-calculated from apparel variants below.
               </p>
