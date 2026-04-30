@@ -6,6 +6,7 @@ import type {
   InventoryItemType,
   InventoryStatus,
   InventorySource,
+  InventoryTaxMode,
 } from "@/lib/types/inventory"
 
 type AmplifyRecord = Schema["InventoryItem"]["type"]
@@ -76,6 +77,8 @@ export function fromAmplifyRecord(r: AmplifyRecord): InventoryItem {
     cost: r.cost ?? undefined,
     quantity: r.quantity,
     location: (r.location as string | null) ?? undefined,
+    taxMode: ((r.taxMode as string | null) ?? "DEFAULT") as InventoryTaxMode,
+    customTaxRate: r.customTaxRate ?? undefined,
     sourceSystem: ((r.sourceSystem as string | null) ?? "MANUAL") as InventorySource,
     firearm:
       r.itemType === "FIREARM"
@@ -129,6 +132,8 @@ export function toAmplifyCreateInput(item: InventoryItem): AmplifyCreateInput {
     status: item.status as AmplifyCreateInput["status"],
     unitPrice: item.price,
     quantity: item.quantity,
+    taxMode: item.taxMode as AmplifyCreateInput["taxMode"],
+    customTaxRate: item.customTaxRate,
     isSerialized: item.itemType === "FIREARM" && !!item.firearm?.serialNumber,
     fflRequired: item.firearm?.requiresFflTransfer ?? false,
     description: item.description,

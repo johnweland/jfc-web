@@ -7,6 +7,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "@/amplify/data/resource";
 import { toAmplifyCreateInput, toAmplifyUpdateInput } from "@/lib/inventory/mapper";
+import { getApparelSizeOptions, sortApparelSizes } from "@/lib/data/apparel-sizes";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,7 @@ import type {
   InventoryItemType,
   InventoryStatus,
   InventorySource,
+  InventoryTaxMode,
 } from "@/lib/types/inventory";
 import { ImageUploader } from "./image-uploader";
 
@@ -153,6 +155,12 @@ export function InventoryForm({
   const [cost, setCost] = useState(initialData?.cost?.toString() ?? "");
   const [sku, setSku] = useState(initialData?.sku ?? "");
   const [upc, setUpc] = useState(initialData?.upc ?? "");
+  const [taxMode, setTaxMode] = useState<InventoryTaxMode>(
+    initialData?.taxMode ?? "DEFAULT",
+  );
+  const [customTaxRate, setCustomTaxRate] = useState(
+    initialData?.customTaxRate?.toString() ?? "",
+  );
 
   // Stock & Status
   const [quantity, setQuantity] = useState(
@@ -193,6 +201,9 @@ export function InventoryForm({
   const [material, setMaterial] = useState(initialData?.apparel?.material ?? "");
   const [apparelVariants, setApparelVariants] = useState<InventoryApparelVariant[]>(
     () => getInitialApparelVariants(initialData),
+  );
+  const apparelSizeOptions = getApparelSizeOptions(
+    apparelVariants.map((variant) => variant.size),
   );
 
   // Images
@@ -260,8 +271,8 @@ export function InventoryForm({
         ? cleanedApparelVariants.reduce((sum, variant) => sum + variant.quantity, 0)
         : parseInt(quantity) || 0;
 
-    const apparelSizes = Array.from(
-      new Set(cleanedApparelVariants.map((variant) => variant.size).filter(Boolean)),
+    const apparelSizes = sortApparelSizes(
+      cleanedApparelVariants.map((variant) => variant.size).filter(Boolean),
     );
     const apparelColors = Array.from(
       new Set(cleanedApparelVariants.map((variant) => variant.color).filter(Boolean)),
@@ -281,6 +292,11 @@ export function InventoryForm({
       upc: upc || undefined,
       price: parseFloat(price) || 0,
       cost: cost ? parseFloat(cost) : undefined,
+      taxMode,
+      customTaxRate:
+        taxMode === "CUSTOM" && customTaxRate
+          ? parseFloat(customTaxRate)
+          : undefined,
       quantity: itemType === "APPAREL" ? apparelQuantity : parseInt(quantity) || 0,
       location: location || undefined,
       sourceSystem,
@@ -493,6 +509,59 @@ export function InventoryForm({
       </SectionCard>
 
       {/* Section 3: Stock & Status */}
+      <SectionCard title="Tax">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field>
+            <FieldLabel htmlFor="taxMode" required>
+              Tax Behavior
+            </FieldLabel>
+            <Select
+              value={taxMode}
+              onValueChange={(value) => setTaxMode(value as InventoryTaxMode)}
+            >
+              <SelectTrigger id="taxMode" className="h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="DEFAULT" className="text-xs">
+                  DEFAULT RATE
+                </SelectItem>
+                <SelectItem value="CATEGORY" className="text-xs">
+                  CATEGORY RATE
+                </SelectItem>
+                <SelectItem value="CUSTOM" className="text-xs">
+                  CUSTOM RATE
+                </SelectItem>
+                <SelectItem value="EXEMPT" className="text-xs">
+                  TAX EXEMPT
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Use the store default, a category override, a custom item rate, or exempt this item.
+            </p>
+          </Field>
+
+          <Field>
+            <FieldLabel htmlFor="customTaxRate">
+              Custom Tax Rate (%)
+            </FieldLabel>
+            <Input
+              id="customTaxRate"
+              type="number"
+              min="0"
+              step="0.001"
+              value={customTaxRate}
+              onChange={(e) => setCustomTaxRate(e.target.value)}
+              disabled={taxMode !== "CUSTOM"}
+              placeholder={taxMode === "CUSTOM" ? "e.g. 7.500" : "Only used for custom tax"}
+              className="h-9 font-mono"
+            />
+          </Field>
+        </div>
+      </SectionCard>
+
+      {/* Section 4: Stock & Status */}
       <SectionCard title="Stock & Status">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field>
@@ -559,7 +628,7 @@ export function InventoryForm({
         </div>
       </SectionCard>
 
-      {/* Section 4a: Part Details (conditional) */}
+      {/* Section 5a: Part Details (conditional) */}
       {(itemType === "PART" || itemType === "ACCESSORY") && (
         <SectionCard title="Part Details">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -598,7 +667,7 @@ export function InventoryForm({
         </SectionCard>
       )}
 
-      {/* Section 4b: Firearm Details (conditional) */}
+      {/* Section 5b: Firearm Details (conditional) */}
       {itemType === "FIREARM" && (
         <SectionCard title="Firearm Details">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -795,15 +864,26 @@ export function InventoryForm({
                         <FieldLabel htmlFor={`variant-size-${variant.id}`} required>
                           Size
                         </FieldLabel>
-                        <Input
-                          id={`variant-size-${variant.id}`}
+                        <Select
                           value={variant.size}
-                          onChange={(e) =>
-                            updateApparelVariant(variant.id, { size: e.target.value })
+                          onValueChange={(value) =>
+                            updateApparelVariant(variant.id, { size: value })
                           }
-                          placeholder={index === 0 ? "SM" : "LG"}
-                          className="h-9"
-                        />
+                        >
+                          <SelectTrigger
+                            id={`variant-size-${variant.id}`}
+                            className="h-9"
+                          >
+                            <SelectValue placeholder="Select size..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {apparelSizeOptions.map((size) => (
+                              <SelectItem key={size} value={size} className="text-xs">
+                                {size}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </Field>
                     </div>
 

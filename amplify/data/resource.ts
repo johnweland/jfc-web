@@ -18,6 +18,12 @@ const schema = a.schema({
     'NFA',
     'OTHER',
   ]),
+  TaxMode: a.enum([
+    'DEFAULT',
+    'CATEGORY',
+    'CUSTOM',
+    'EXEMPT',
+  ]),
   OrderStatus: a.enum([
     'PENDING',
     'AWAITING_PAYMENT',
@@ -186,6 +192,23 @@ const schema = a.schema({
       allow.group('ADMINS'),
     ]),
 
+  TaxSettings: a
+    .model({
+      id: a.string().required(),
+      defaultRate: a.float().required().default(0),
+      firearmRate: a.float(),
+      partRate: a.float(),
+      accessoryRate: a.float(),
+      apparelRate: a.float(),
+      otherRate: a.float(),
+    })
+    .identifier(['id'])
+    .authorization((allow) => [
+      allow.publicApiKey().to(['read']),
+      allow.authenticated().to(['read']),
+      allow.groups(['ADMINS', 'STAFF']),
+    ]),
+
   InventoryItem: a
     .model({
       sku: a.string(),
@@ -254,6 +277,21 @@ const schema = a.schema({
           allow.authenticated().to(['read']),
           allow.groups(['ADMINS', 'STAFF']),
         ]),
+      taxMode: a
+        .ref('TaxMode')
+        .required()
+        .authorization((allow) => [
+          allow.publicApiKey().to(['read']),
+          allow.authenticated().to(['read']),
+          allow.groups(['ADMINS', 'STAFF']),
+        ]),
+      customTaxRate: a
+        .float()
+        .authorization((allow) => [
+          allow.publicApiKey().to(['read']),
+          allow.authenticated().to(['read']),
+          allow.groups(['ADMINS', 'STAFF']),
+        ]),
       salePrice: a.float(),
       cost: a.float().authorization((allow) => [allow.groups(['ADMINS', 'STAFF'])]),
       serialNumber: a.string().authorization((allow) => [allow.groups(['ADMINS', 'STAFF'])]),
@@ -307,7 +345,11 @@ const schema = a.schema({
         .authorization((allow) => [allow.groups(['ADMINS', 'STAFF'])]),
       images: a
         .json()
-        .authorization((allow) => [allow.groups(['ADMINS', 'STAFF'])]),
+        .authorization((allow) => [
+          allow.publicApiKey().to(['read']),
+          allow.authenticated().to(['read']),
+          allow.groups(['ADMINS', 'STAFF']),
+        ]),
     })
     .secondaryIndexes((index) => [
       index('status').queryField('inventoryItemsByStatus'),

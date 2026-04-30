@@ -139,45 +139,43 @@ export default function FFLInfoPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.1fr_0.9fr] xl:items-start">
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              {[
-                {
-                  title: "Receiving Instructions",
-                  items: ourFfl.receivingInstructions,
-                },
-                {
-                  title: "Buyer Checklist",
-                  items: ourFfl.buyerChecklist,
-                },
-                {
-                  title: "Sender Checklist",
-                  items: ourFfl.sellerChecklist,
-                },
-              ].map((section) => (
-                <div key={section.title} className="bg-surface p-6 h-full">
-                  <h3
-                    className="font-display text-sm font-bold uppercase text-foreground mb-4"
-                    style={{ letterSpacing: "0.06em" }}
-                  >
-                    {section.title}
-                  </h3>
-                  <ul className="space-y-3">
-                    {section.items.map((item) => (
-                      <li
-                        key={item}
-                        className="text-sm text-muted-foreground leading-relaxed"
-                      >
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
+          <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-2 xl:grid-cols-4">
+            {[
+              {
+                title: "Receiving Instructions",
+                items: ourFfl.receivingInstructions,
+              },
+              {
+                title: "Buyer Checklist",
+                items: ourFfl.buyerChecklist,
+              },
+              {
+                title: "Sender Checklist",
+                items: ourFfl.sellerChecklist,
+              },
+            ].map((section) => (
+              <div key={section.title} className="h-full bg-surface p-6">
+                <h3
+                  className="font-display text-sm font-bold uppercase text-foreground mb-4"
+                  style={{ letterSpacing: "0.06em" }}
+                >
+                  {section.title}
+                </h3>
+                <ul className="space-y-3">
+                  {section.items.map((item) => (
+                    <li
+                      key={item}
+                      className="text-sm text-muted-foreground leading-relaxed"
+                    >
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
 
-            <div className="bg-surface p-8 lg:p-10 h-fit">
-              <Phone className="size-8 text-primary mb-6" />
+            <div className="flex h-full flex-col bg-surface p-6">
+              <Phone className="mb-6 size-8 text-primary" />
               <p
                 className="font-display text-xs font-semibold uppercase text-primary mb-3"
                 style={{ letterSpacing: "0.18em" }}
@@ -185,8 +183,8 @@ export default function FFLInfoPage() {
                 Receiving Contact
               </p>
               <h3
-                className="font-display text-xl font-bold uppercase text-foreground mb-6"
-                style={{ letterSpacing: "-0.02em" }}
+                className="font-display text-sm font-bold uppercase text-foreground mb-4"
+                style={{ letterSpacing: "0.06em" }}
               >
                 {ourFfl.contact.businessName}
               </h3>
@@ -213,7 +211,7 @@ export default function FFLInfoPage() {
                 </p>
               </address>
               <p
-                className="mt-6 text-[10px] uppercase text-muted-foreground/50"
+                className="mt-auto pt-6 text-[10px] uppercase text-muted-foreground/50"
                 style={{ letterSpacing: "0.08em" }}
               >
                 {ourFfl.contact.hours}

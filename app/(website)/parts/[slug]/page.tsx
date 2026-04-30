@@ -129,6 +129,9 @@ export default async function PartDetailPage({ params }: Props) {
                   sku: part.sku,
                   price: part.price,
                   category: "part",
+                  imageUrl: part.images[0],
+                  maxQuantity: part.availableQuantity,
+                  taxRate: part.taxRate,
                   requiresFFL: part.requiresFFL,
                 }}
                 backordered={part.status === "backordered"}

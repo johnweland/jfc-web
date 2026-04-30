@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import {
   ShoppingCart,
   Minus,
@@ -28,7 +29,7 @@ const steps = [
 ];
 
 export default function CartPage() {
-  const { items, subtotal, removeItem, setQuantity } = useCart();
+  const { items, subtotal, estimatedTax, total, removeItem, setQuantity } = useCart();
   const hasFfl = items.some((i) => i.requiresFFL);
 
   return (
@@ -110,14 +111,29 @@ export default function CartPage() {
               <div className="bg-surface-container-low divide-y divide-surface-container-high">
                 {items.map((item) => (
                   <div key={item.slug} className="flex gap-4 p-5">
-                    {/* Image placeholder */}
-                    <div className="size-20 shrink-0 bg-surface-container flex items-center justify-center">
-                      <span
-                        className="text-[8px] uppercase text-muted-foreground/30"
-                        style={{ letterSpacing: "0.1em" }}
-                      >
-                        {item.category.toUpperCase()}
-                      </span>
+                    {(() => {
+                      const atLimit =
+                        item.maxQuantity != null && item.quantity >= item.maxQuantity;
+
+                      return (
+                        <>
+                    <div className="relative size-20 shrink-0 overflow-hidden bg-surface-container flex items-center justify-center">
+                      {item.imageUrl ? (
+                        <Image
+                          src={item.imageUrl}
+                          alt={item.name}
+                          fill
+                          className="object-cover"
+                          sizes="80px"
+                        />
+                      ) : (
+                        <span
+                          className="text-[8px] uppercase text-muted-foreground/30"
+                          style={{ letterSpacing: "0.1em" }}
+                        >
+                          {item.category.toUpperCase()}
+                        </span>
+                      )}
                     </div>
 
                     {/* Details */}
@@ -187,20 +203,24 @@ export default function CartPage() {
                             className="w-9 text-center text-xs font-semibold text-foreground"
                             style={{ letterSpacing: "0.04em" }}
                           >
-                            {item.quantity}
+                          {item.quantity}
                           </span>
                           <button
+                            disabled={atLimit}
                             onClick={() =>
                               setQuantity(item.slug, item.quantity + 1)
                             }
                             aria-label="Increase quantity"
-                            className="flex size-8 items-center justify-center text-muted-foreground transition-colors hover:text-foreground hover:bg-surface-container-high"
+                            className="flex size-8 items-center justify-center text-muted-foreground transition-colors hover:text-foreground hover:bg-surface-container-high disabled:cursor-not-allowed disabled:text-muted-foreground/30 disabled:hover:bg-transparent disabled:hover:text-muted-foreground/30"
                           >
                             <Plus className="size-3" />
                           </button>
                         </div>
                       </div>
                     </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 ))}
               </div>
@@ -246,7 +266,7 @@ export default function CartPage() {
                     <span style={{ letterSpacing: "0.08em" }}>
                       ESTIMATED TAX
                     </span>
-                    <span>{formatPrice(0)}</span>
+                    <span>{formatPrice(estimatedTax)}</span>
                   </div>
 
                   <Separator className="bg-border/20 my-1" />
@@ -259,7 +279,7 @@ export default function CartPage() {
                       GRAND TOTAL
                     </span>
                     <span className="font-display text-lg font-bold text-primary">
-                      {formatPrice(subtotal)}
+                      {formatPrice(total)}
                     </span>
                   </div>
                 </div>
@@ -277,11 +297,14 @@ export default function CartPage() {
 
                 {/* CTA */}
                 <Button
+                  asChild
                   className="gradient-primary text-primary-foreground font-bold uppercase rounded-none border-0 w-full justify-center gap-2 text-xs"
                   style={{ letterSpacing: "0.12em" }}
                 >
-                  PROCEED TO CHECKOUT
-                  <ArrowRight className="size-3.5" />
+                  <Link href="/checkout">
+                    PROCEED TO CHECKOUT
+                    <ArrowRight className="size-3.5" />
+                  </Link>
                 </Button>
 
                 {/* Security note */}
