@@ -16,7 +16,7 @@ export const APPAREL_SIZE_OPTIONS = [
 
 export type ApparelSize = (typeof APPAREL_SIZE_OPTIONS)[number];
 
-const APPAREL_SIZE_ORDER = new Map(
+const APPAREL_SIZE_ORDER = new Map<string, number>(
   APPAREL_SIZE_OPTIONS.map((size, index) => [size, index]),
 );
 
