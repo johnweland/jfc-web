@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Check, MapPin, Pencil, Plus, ShieldCheck, Trash2, X } from "lucide-react";
 import { generateClient } from "aws-amplify/data";
 import type { Schema } from "@/amplify/data/resource";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+
+const client = generateClient<Schema>();
 
 type CustomerAddressRecord = Schema["CustomerAddress"]["type"];
 type CustomerFflLocationRecord = Schema["CustomerFflLocation"]["type"];
@@ -418,7 +420,6 @@ function FflCard({
 }
 
 export function AddressBook({ customer }: { customer: CustomerIdentity }) {
-  const client = useMemo(() => generateClient<Schema>(), []);
   const [shipping, setShipping] = useState<CustomerAddressRecord[]>([]);
   const [fflDealers, setFflDealers] = useState<CustomerFflLocationRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);

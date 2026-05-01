@@ -55,11 +55,12 @@
     --outline-variant: #4b463b;
 
     /* Typography */
-    --font-sans: var(--font-inter), Inter, -apple-system, sans-serif;
+    --font-sans: "Avenir Next", "Segoe UI", Helvetica, Arial, sans-serif;
     --font-display:
-        var(--font-space-grotesk), "Space Grotesk", Inter, sans-serif;
+        "Avenir Next Condensed", "Franklin Gothic Medium", "Arial Narrow",
+        sans-serif;
     --font-serif: Georgia, serif;
-    --font-mono: var(--font-jetbrains-mono), JetBrains Mono, monospace;
+    --font-mono: "SFMono-Regular", "JetBrains Mono", ui-monospace, monospace;
 
     /* Shape — 0px radius = Brutalist Tactical */
     --radius: 0rem;

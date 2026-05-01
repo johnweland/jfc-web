@@ -228,10 +228,13 @@ const ALL_STATUSES = [
 ] as const;
 
 export function InventoryTable({ data }: { data: InventoryItem[] }) {
+  "use no memo";
+
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data,
     columns,
