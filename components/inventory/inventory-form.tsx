@@ -524,10 +524,10 @@ export function InventoryForm({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="DEFAULT" className="text-xs">
-                  DEFAULT RATE
+                  STORE DEFAULT
                 </SelectItem>
                 <SelectItem value="CATEGORY" className="text-xs">
-                  CATEGORY RATE
+                  CATEGORY RULE
                 </SelectItem>
                 <SelectItem value="CUSTOM" className="text-xs">
                   CUSTOM RATE
@@ -538,7 +538,7 @@ export function InventoryForm({
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              Use the store default, a category override, a custom item rate, or exempt this item.
+              Use the combined store default, a category rule, a custom item rate, or exempt this item.
             </p>
           </Field>
 

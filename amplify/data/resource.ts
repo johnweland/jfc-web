@@ -196,11 +196,18 @@ const schema = a.schema({
     .model({
       id: a.string().required(),
       defaultRate: a.float().required().default(0),
+      stateRate: a.float().required().default(0),
+      localRate: a.float().required().default(0),
       firearmRate: a.float(),
+      firearmExempt: a.boolean().required().default(false),
       partRate: a.float(),
+      partExempt: a.boolean().required().default(false),
       accessoryRate: a.float(),
+      accessoryExempt: a.boolean().required().default(false),
       apparelRate: a.float(),
+      apparelExempt: a.boolean().required().default(false),
       otherRate: a.float(),
+      otherExempt: a.boolean().required().default(false),
     })
     .identifier(['id'])
     .authorization((allow) => [
