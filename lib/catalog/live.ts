@@ -265,7 +265,7 @@ async function toProduct(item: InventoryItem): Promise<Product | null> {
 }
 
 export const getLiveCatalog = cache(async (): Promise<Product[]> => {
-  if (!isAmplifyDataConfigured) {
+  if (process.env.E2E_TEST_MODE !== "1" && !isAmplifyDataConfigured) {
     return getAllProducts()
   }
 
@@ -277,7 +277,7 @@ export const getLiveCatalog = cache(async (): Promise<Product[]> => {
 export async function getLiveProductsByCategory<C extends ProductCategory>(
   category: C,
 ): Promise<CategoryProductMap[C][]> {
-  if (!isAmplifyDataConfigured) {
+  if (process.env.E2E_TEST_MODE !== "1" && !isAmplifyDataConfigured) {
     return getProductsByCategory(category) as CategoryProductMap[C][]
   }
 
@@ -291,7 +291,7 @@ export async function getLiveProductBySlug<C extends ProductCategory>(
   slug: string,
   category?: C,
 ): Promise<CategoryProductMap[C] | Product | undefined> {
-  if (!isAmplifyDataConfigured) {
+  if (process.env.E2E_TEST_MODE !== "1" && !isAmplifyDataConfigured) {
     return getProductBySlug(slug, category) as CategoryProductMap[C] | Product | undefined
   }
 
@@ -303,7 +303,7 @@ export async function getLiveProductBySlug<C extends ProductCategory>(
 }
 
 export async function getLiveFeaturedProducts() {
-  if (!isAmplifyDataConfigured) {
+  if (process.env.E2E_TEST_MODE !== "1" && !isAmplifyDataConfigured) {
     return getFeaturedProducts()
   }
 
