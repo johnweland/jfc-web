@@ -127,7 +127,7 @@ function toColorSwatches(item: InventoryItem): ColorSwatch[] {
   )
 }
 
-async function resolveImageUrls(images?: InventoryImage[], placeholder = "/placeholder-part.jpg") {
+async function resolveImageUrls(images?: InventoryImage[], placeholder = "/placeholder.svg") {
   if (!images?.length) {
     return [placeholder]
   }
@@ -136,7 +136,8 @@ async function resolveImageUrls(images?: InventoryImage[], placeholder = "/place
   const hydratedImages = await refreshInventoryImages(orderedImages)
   const urls = hydratedImages?.map((image) => image.url) ?? []
 
-  return urls.filter((url): url is string => Boolean(url))
+  const resolved = urls.filter((url): url is string => Boolean(url))
+  return resolved.length > 0 ? resolved : [placeholder]
 }
 
 async function toFirearmProduct(
@@ -163,7 +164,7 @@ async function toFirearmProduct(
     finish: item.firearm?.finish ?? "N/A",
     requiresFFL: true,
     manufacturer: item.manufacturer ?? item.brand ?? "Jackson Firearm Co",
-    images: await resolveImageUrls(item.images, "/placeholder-firearm.jpg"),
+    images: await resolveImageUrls(item.images, "/placeholder.svg"),
     description: item.description ?? "Product details coming soon.",
     serialTag: item.firearm?.serialNumber,
     series: item.model,
@@ -190,7 +191,7 @@ async function toPartProduct(
     category: "part",
     partType: item.category ?? item.model ?? item.brand ?? item.manufacturer ?? "Component",
     compatibility: compatibility.length > 0 ? compatibility : ["General Use"],
-    images: await resolveImageUrls(item.images, "/placeholder-part.jpg"),
+    images: await resolveImageUrls(item.images, "/placeholder.svg"),
     description: item.description ?? "Product details coming soon.",
     requiresFFL: false,
   }
@@ -229,7 +230,7 @@ async function toApparelProduct(
     sizes: sizes.length > 0 ? sizes : [DEFAULT_APPAREL_SIZE],
     colorSwatches: toColorSwatches(item),
     variants,
-    images: await resolveImageUrls(item.images, "/placeholder-apparel.jpg"),
+    images: await resolveImageUrls(item.images, "/placeholder.svg"),
     description: item.description ?? "Product details coming soon.",
     requiresFFL: false,
   }
@@ -256,6 +257,7 @@ async function toProduct(item: InventoryItem): Promise<Product | null> {
       return toApparelProduct(item, status, taxRate)
     case "PART":
     case "ACCESSORY":
+    case "AMMUNITION":
       return toPartProduct(item, status, taxRate)
     default:
       return null

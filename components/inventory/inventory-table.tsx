@@ -218,7 +218,7 @@ const columns = [
 // Main component
 // ---------------------------------------------------------------------------
 
-const ALL_TYPES = ["FIREARM", "PART", "ACCESSORY", "APPAREL", "OTHER"] as const;
+const ALL_TYPES = ["FIREARM", "PART", "ACCESSORY", "APPAREL", "OTHER", "SERVICES", "AMMUNITION"] as const;
 const ALL_STATUSES = [
   "DRAFT",
   "AVAILABLE",

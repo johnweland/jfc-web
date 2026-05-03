@@ -283,7 +283,11 @@ export function InventoryForm({
       itemType,
       status,
       name,
-      category: (itemType === "PART" || itemType === "ACCESSORY") ? (partCategory || undefined) : undefined,
+      category:
+        itemType === "PART" || itemType === "ACCESSORY" || itemType === "OTHER" || itemType === "SERVICES"
+          || itemType === "AMMUNITION"
+          ? (partCategory || undefined)
+          : undefined,
       description: description || undefined,
       manufacturer: manufacturer || undefined,
       brand: brand || undefined,
@@ -300,6 +304,8 @@ export function InventoryForm({
       quantity: itemType === "APPAREL" ? apparelQuantity : parseInt(quantity) || 0,
       location: location || undefined,
       sourceSystem,
+      sourceId: initialData?.sourceId,
+      importBatchId: initialData?.importBatchId,
       ...(itemType === "FIREARM" && {
         firearm: {
           serialNumber: serialNumber || undefined,
@@ -378,7 +384,7 @@ export function InventoryForm({
               </SelectTrigger>
               <SelectContent>
                 {(
-                  ["FIREARM", "PART", "ACCESSORY", "APPAREL", "OTHER"] as const
+                  ["FIREARM", "PART", "ACCESSORY", "APPAREL", "OTHER", "SERVICES", "AMMUNITION"] as const
                 ).map((t) => (
                   <SelectItem key={t} value={t} className="text-xs">
                     {t}
@@ -629,7 +635,7 @@ export function InventoryForm({
       </SectionCard>
 
       {/* Section 5a: Part Details (conditional) */}
-      {(itemType === "PART" || itemType === "ACCESSORY") && (
+      {(itemType === "PART" || itemType === "ACCESSORY" || itemType === "OTHER" || itemType === "SERVICES" || itemType === "AMMUNITION") && (
         <SectionCard title="Part Details">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field>

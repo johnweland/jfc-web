@@ -13,18 +13,40 @@ export function ProductImageGallery({
   emptyLabel: string
 }) {
   const [activeIndex, setActiveIndex] = useState(0)
+  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({})
   const activeImage = images[activeIndex]
+  const resolvedActiveImage =
+    activeImage && !failedImages[activeImage] ? activeImage : "/placeholder.svg"
+  const activeIsPlaceholder = resolvedActiveImage === "/placeholder.svg"
+
+  function markImageFailed(image: string) {
+    setFailedImages((current) => {
+      if (current[image]) {
+        return current
+      }
+
+      return {
+        ...current,
+        [image]: true,
+      }
+    })
+  }
 
   return (
     <div className="flex flex-col gap-4">
       <div className="relative aspect-[4/3] overflow-hidden bg-surface-container-low">
-        {activeImage ? (
+        {resolvedActiveImage ? (
           <Image
-            src={activeImage}
+            src={resolvedActiveImage}
             alt={productName}
             fill
-            className="object-cover"
+            className={
+              activeIsPlaceholder
+                ? "absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
+                : "object-cover"
+            }
             sizes="(max-width: 1024px) 100vw, 50vw"
+            onError={() => activeImage && markImageFailed(activeImage)}
           />
         ) : (
           <div className="flex h-full items-center justify-center">
@@ -40,7 +62,11 @@ export function ProductImageGallery({
 
       {images.length > 1 && (
         <div className="flex flex-wrap gap-2">
-          {images.map((image, index) => (
+          {images.map((image, index) => {
+            const thumbnailSrc = failedImages[image] ? "/placeholder.svg" : image
+            const thumbnailIsPlaceholder = thumbnailSrc === "/placeholder.svg"
+
+            return (
             <button
               key={`${image}-${index}`}
               type="button"
@@ -52,14 +78,20 @@ export function ProductImageGallery({
               aria-pressed={index === activeIndex}
             >
               <Image
-                src={image}
+                src={thumbnailSrc}
                 alt={`${productName} thumbnail ${index + 1}`}
                 fill
-                className="object-cover"
+                className={
+                  thumbnailIsPlaceholder
+                    ? "absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
+                    : "object-cover"
+                }
                 sizes="80px"
+                onError={() => markImageFailed(image)}
               />
             </button>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>

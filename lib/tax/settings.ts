@@ -71,6 +71,8 @@ export const getStoreTaxSettings = cache(async (): Promise<StoreTaxSettings> => 
         ACCESSORY: primary.data.accessoryRate ?? null,
         APPAREL: primary.data.apparelRate ?? null,
         OTHER: primary.data.otherRate ?? null,
+        SERVICES: primary.data.serviceRate ?? null,
+        AMMUNITION: primary.data.ammunitionRate ?? null,
       },
       categoryExemptions: {
         FIREARM: primary.data.firearmExempt ?? false,
@@ -78,6 +80,8 @@ export const getStoreTaxSettings = cache(async (): Promise<StoreTaxSettings> => 
         ACCESSORY: primary.data.accessoryExempt ?? false,
         APPAREL: primary.data.apparelExempt ?? false,
         OTHER: primary.data.otherExempt ?? false,
+        SERVICES: primary.data.serviceExempt ?? false,
+        AMMUNITION: primary.data.ammunitionExempt ?? false,
       },
     }
   }
@@ -108,6 +112,8 @@ export const getStoreTaxSettings = cache(async (): Promise<StoreTaxSettings> => 
       ACCESSORY: legacy.data.accessoryRate ?? null,
       APPAREL: legacy.data.apparelRate ?? null,
       OTHER: legacy.data.otherRate ?? null,
+      SERVICES: null,
+      AMMUNITION: null,
     },
     categoryExemptions: {
       FIREARM: false,
@@ -115,6 +121,8 @@ export const getStoreTaxSettings = cache(async (): Promise<StoreTaxSettings> => 
       ACCESSORY: false,
       APPAREL: false,
       OTHER: false,
+      SERVICES: false,
+      AMMUNITION: false,
     },
   }
 })

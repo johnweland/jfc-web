@@ -35,6 +35,10 @@ type TaxFormState = {
   apparelExempt: boolean;
   otherRate: string;
   otherExempt: boolean;
+  serviceRate: string;
+  serviceExempt: boolean;
+  ammunitionRate: string;
+  ammunitionExempt: boolean;
 };
 
 const EMPTY_FORM: TaxFormState = {
@@ -50,6 +54,10 @@ const EMPTY_FORM: TaxFormState = {
   apparelExempt: false,
   otherRate: "",
   otherExempt: false,
+  serviceRate: "",
+  serviceExempt: false,
+  ammunitionRate: "",
+  ammunitionExempt: false,
 };
 
 type LegacyTaxSettingsRecord = {
@@ -60,6 +68,8 @@ type LegacyTaxSettingsRecord = {
   accessoryRate?: number | null;
   apparelRate?: number | null;
   otherRate?: number | null;
+  serviceRate?: number | null;
+  ammunitionRate?: number | null;
 };
 
 function toInputValue(value: number | null | undefined) {
@@ -85,7 +95,9 @@ function hasLegacyTaxFieldReadError(
         error.message.includes("/getTaxSettings/partExempt") ||
         error.message.includes("/getTaxSettings/accessoryExempt") ||
         error.message.includes("/getTaxSettings/apparelExempt") ||
-        error.message.includes("/getTaxSettings/otherExempt"),
+        error.message.includes("/getTaxSettings/otherExempt") ||
+        error.message.includes("/getTaxSettings/serviceExempt") ||
+        error.message.includes("/getTaxSettings/ammunitionExempt"),
     ),
   );
 }
@@ -114,6 +126,10 @@ function applyTaxSettingsToForm(
     apparelExempt: "apparelExempt" in record ? record.apparelExempt ?? false : false,
     otherRate: toInputValue(record.otherRate),
     otherExempt: "otherExempt" in record ? record.otherExempt ?? false : false,
+    serviceRate: toInputValue(record.serviceRate),
+    serviceExempt: "serviceExempt" in record ? record.serviceExempt ?? false : false,
+    ammunitionRate: toInputValue(record.ammunitionRate),
+    ammunitionExempt: "ammunitionExempt" in record ? record.ammunitionExempt ?? false : false,
   });
 }
 
@@ -292,6 +308,10 @@ export function TaxSettingsForm() {
       apparelExempt: form.apparelExempt,
       otherRate: parseOptionalRate(form.otherRate),
       otherExempt: form.otherExempt,
+      serviceRate: parseOptionalRate(form.serviceRate),
+      serviceExempt: form.serviceExempt,
+      ammunitionRate: parseOptionalRate(form.ammunitionRate),
+      ammunitionExempt: form.ammunitionExempt,
     };
   }, [form]);
 
@@ -323,6 +343,10 @@ export function TaxSettingsForm() {
       apparelExempt: form.apparelExempt,
       otherRate: parseOptionalRate(form.otherRate),
       otherExempt: form.otherExempt,
+      serviceRate: parseOptionalRate(form.serviceRate),
+      serviceExempt: form.serviceExempt,
+      ammunitionRate: parseOptionalRate(form.ammunitionRate),
+      ammunitionExempt: form.ammunitionExempt,
     };
 
     try {
@@ -432,6 +456,24 @@ export function TaxSettingsForm() {
             exempt={form.otherExempt}
             onRateChange={(value) => update("otherRate", value)}
             onExemptChange={(value) => update("otherExempt", value)}
+          />
+          <CategoryTaxField
+            rateId="serviceRate"
+            exemptId="serviceExempt"
+            label="Services"
+            rateValue={form.serviceRate}
+            exempt={form.serviceExempt}
+            onRateChange={(value) => update("serviceRate", value)}
+            onExemptChange={(value) => update("serviceExempt", value)}
+          />
+          <CategoryTaxField
+            rateId="ammunitionRate"
+            exemptId="ammunitionExempt"
+            label="Ammunition"
+            rateValue={form.ammunitionRate}
+            exempt={form.ammunitionExempt}
+            onRateChange={(value) => update("ammunitionRate", value)}
+            onExemptChange={(value) => update("ammunitionExempt", value)}
           />
         </CardContent>
       </Card>

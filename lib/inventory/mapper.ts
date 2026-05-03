@@ -80,6 +80,8 @@ export function fromAmplifyRecord(r: AmplifyRecord): InventoryItem {
     taxMode: ((r.taxMode as string | null) ?? "DEFAULT") as InventoryTaxMode,
     customTaxRate: r.customTaxRate ?? undefined,
     sourceSystem: ((r.sourceSystem as string | null) ?? "MANUAL") as InventorySource,
+    sourceId: (r.sourceId as string | null) ?? undefined,
+    importBatchId: (r.importBatchId as string | null) ?? undefined,
     firearm:
       r.itemType === "FIREARM"
         ? {
@@ -167,6 +169,8 @@ export function toAmplifyCreateInput(item: InventoryItem): AmplifyCreateInput {
       : undefined,
     // Admin-only fields
     location: item.location,
+    sourceId: item.sourceId,
+    importBatchId: item.importBatchId,
     sourceSystem: item.sourceSystem,
     images: item.images ? JSON.stringify(item.images) : undefined,
   }

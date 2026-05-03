@@ -1,7 +1,7 @@
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
 
 const schema = a.schema({
-  InventoryItemType: a.enum(['FIREARM', 'PART', 'ACCESSORY', 'PART_ACCESSORY', 'APPAREL', 'OTHER']),
+  InventoryItemType: a.enum(['FIREARM', 'PART', 'ACCESSORY', 'PART_ACCESSORY', 'APPAREL', 'OTHER', 'SERVICES', 'AMMUNITION']),
   InventoryStatus: a.enum([
     'DRAFT',
     'AVAILABLE',
@@ -208,6 +208,10 @@ const schema = a.schema({
       apparelExempt: a.boolean().required().default(false),
       otherRate: a.float(),
       otherExempt: a.boolean().required().default(false),
+      serviceRate: a.float(),
+      serviceExempt: a.boolean().required().default(false),
+      ammunitionRate: a.float(),
+      ammunitionExempt: a.boolean().required().default(false),
     })
     .identifier(['id'])
     .authorization((allow) => [
@@ -345,6 +349,12 @@ const schema = a.schema({
         .json()
         .authorization((allow) => [allow.groups(['ADMINS', 'STAFF'])]),
       location: a
+        .string()
+        .authorization((allow) => [allow.groups(['ADMINS', 'STAFF'])]),
+      sourceId: a
+        .string()
+        .authorization((allow) => [allow.groups(['ADMINS', 'STAFF'])]),
+      importBatchId: a
         .string()
         .authorization((allow) => [allow.groups(['ADMINS', 'STAFF'])]),
       sourceSystem: a
