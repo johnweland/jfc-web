@@ -7,7 +7,6 @@ import {
   Package,
   ShoppingCart,
   Users,
-  Upload,
   Settings,
 } from "lucide-react";
 
