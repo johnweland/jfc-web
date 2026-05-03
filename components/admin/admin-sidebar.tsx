@@ -7,7 +7,6 @@ import {
   Package,
   ShoppingCart,
   Users,
-  Upload,
   Settings,
 } from "lucide-react";
 
@@ -16,7 +15,6 @@ const navItems = [
   { label: "INVENTORY", href: "/admin/inventory", icon: Package },
   { label: "ORDERS", href: "/admin/orders", icon: ShoppingCart },
   { label: "CUSTOMERS", href: "/admin/customers", icon: Users },
-  { label: "IMPORT/EXPORT", href: "/admin/import", icon: Upload },
   { label: "SETTINGS", href: "/admin/settings", icon: Settings },
 ];
 

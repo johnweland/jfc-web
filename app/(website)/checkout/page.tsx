@@ -33,12 +33,6 @@ function formatPrice(price: number) {
   }).format(price);
 }
 
-const steps = [
-  { num: "01", label: "CART", active: false, complete: true },
-  { num: "02", label: "DETAILS", active: true, complete: false },
-  { num: "03", label: "REVIEW", active: false, complete: false },
-];
-
 type FormState = {
   email: string;
   recipientName: string;
@@ -113,35 +107,140 @@ function blankFflFields() {
   };
 }
 
+const REQUIRED_SHIPPING_KEYS = [
+  "email",
+  "recipientName",
+  "phone",
+  "line1",
+  "city",
+  "state",
+  "postalCode",
+] as const satisfies readonly (keyof FormState)[];
+
+const REQUIRED_FFL_KEYS = [
+  "fflName",
+  "fflContact",
+  "fflLine1",
+  "fflCity",
+  "fflState",
+  "fflPostalCode",
+] as const satisfies readonly (keyof FormState)[];
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const ZIP_PATTERN = /^\d{5}(-\d{4})?$/;
+const STATE_PATTERN = /^[A-Za-z]{2}$/;
+
+function isRequired(key: keyof FormState, hasFfl: boolean) {
+  if ((REQUIRED_SHIPPING_KEYS as readonly string[]).includes(key)) {
+    return true;
+  }
+  if (hasFfl && (REQUIRED_FFL_KEYS as readonly string[]).includes(key)) {
+    return true;
+  }
+  return false;
+}
+
+function validateField(
+  key: keyof FormState,
+  value: string,
+  hasFfl: boolean,
+): string | null {
+  const trimmed = value.trim();
+
+  if (isRequired(key, hasFfl) && trimmed.length === 0) {
+    return "Required";
+  }
+
+  if (trimmed.length === 0) {
+    return null;
+  }
+
+  if (key === "email" || key === "fflEmail") {
+    return EMAIL_PATTERN.test(trimmed) ? null : "Enter a valid email address";
+  }
+
+  if (key === "postalCode" || key === "fflPostalCode") {
+    return ZIP_PATTERN.test(trimmed) ? null : "Enter a 5-digit ZIP code or ZIP+4";
+  }
+
+  if (key === "state" || key === "fflState") {
+    return STATE_PATTERN.test(trimmed) ? null : "Enter the 2-letter state code";
+  }
+
+  return null;
+}
+
+function validateForm(form: FormState, hasFfl: boolean) {
+  const errors: Partial<Record<keyof FormState, string>> = {};
+  (Object.keys(form) as (keyof FormState)[]).forEach((key) => {
+    const message = validateField(key, form[key], hasFfl);
+    if (message) {
+      errors[key] = message;
+    }
+  });
+  return errors;
+}
+
+function fieldId(key: keyof FormState) {
+  return `field-${key}`;
+}
+
 function Field({
+  id,
   label,
   value,
   onChange,
   type = "text",
-  optional = false,
+  required = false,
+  error,
+  onBlur,
 }: {
+  id: string;
   label: string;
   value: string;
   onChange: (value: string) => void;
   type?: string;
-  optional?: boolean;
+  required?: boolean;
+  error?: string;
+  onBlur?: () => void;
 }) {
+  const errorId = error ? `${id}-error` : undefined;
+
   return (
-    <label className="flex flex-col gap-1.5">
-      <span
+    <div className="flex flex-col gap-1.5">
+      <label
+        htmlFor={id}
         className="text-[10px] font-semibold uppercase text-muted-foreground/60"
         style={{ letterSpacing: "0.12em" }}
       >
         {label}
-        {optional ? <span className="ml-1 normal-case text-muted-foreground/40">(optional)</span> : null}
-      </span>
+        {required ? (
+          <span className="ml-1 text-destructive" aria-hidden="true">
+            *
+          </span>
+        ) : (
+          <span className="ml-1 normal-case text-muted-foreground/40">(optional)</span>
+        )}
+      </label>
       <input
+        id={id}
         type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="border border-border/30 bg-surface-container px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/30 focus:border-primary"
+        onBlur={onBlur}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={errorId}
+        aria-required={required || undefined}
+        className={`border bg-surface-container px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/30 focus:border-primary ${
+          error ? "border-destructive" : "border-border/30"
+        }`}
       />
-    </label>
+      {error ? (
+        <span id={errorId} className="text-[11px] text-destructive">
+          {error}
+        </span>
+      ) : null}
+    </div>
   );
 }
 
@@ -161,6 +260,8 @@ export default function CheckoutPage() {
   const [saveFflToAccount, setSaveFflToAccount] = useState(false);
   const [savingSelections, setSavingSelections] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [reviewMessage, setReviewMessage] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [form, setForm] = useState<FormState>({
     email: "",
     recipientName: "",
@@ -247,6 +348,12 @@ export default function CheckoutPage() {
 
         if (defaultShipping) {
           setSelectedShippingId(defaultShipping.id);
+        }
+        if (defaultFfl) {
+          setSelectedFflId(defaultFfl.id);
+        }
+
+        if (defaultShipping) {
           setForm((current) => ({
             ...current,
             recipientName: current.recipientName || defaultShipping.recipientName || "",
@@ -260,7 +367,6 @@ export default function CheckoutPage() {
         }
 
         if (defaultFfl) {
-          setSelectedFflId(defaultFfl.id);
           setForm((current) => ({
             ...current,
             fflName: current.fflName || defaultFfl.fflName,
@@ -292,46 +398,49 @@ export default function CheckoutPage() {
   }, [client, customerId, isSignedIn]);
 
   const savedDestinationsLoading = isSignedIn && Boolean(customerId) && !savedDestinationsLoaded;
-
-  const formIsComplete = useMemo(() => {
-    const shippingReady = [
-      form.email,
-      form.recipientName,
-      form.phone,
-      form.line1,
-      form.city,
-      form.state,
-      form.postalCode,
-    ].every((value) => value.trim().length > 0);
-
-    if (!shippingReady) {
-      return false;
-    }
-
-    if (!hasFfl) {
-      return true;
-    }
-
-    return [
-      form.fflName,
-      form.fflContact,
-      form.fflLine1,
-      form.fflCity,
-      form.fflState,
-      form.fflPostalCode,
-    ].every((value) => value.trim().length > 0);
-  }, [form, hasFfl]);
+  const steps = showReview
+    ? [
+        { num: "01", label: "CART", active: false, complete: true },
+        { num: "02", label: "DETAILS", active: false, complete: true },
+        { num: "03", label: "REVIEW", active: true, complete: false },
+      ]
+    : [
+        { num: "01", label: "CART", active: false, complete: true },
+        { num: "02", label: "DETAILS", active: true, complete: false },
+        { num: "03", label: "REVIEW", active: false, complete: false },
+      ];
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setSaveMessage(null);
+    setReviewMessage(null);
+    setFieldErrors((current) => {
+      if (!current[key]) return current;
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
     setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function handleBlur(key: keyof FormState) {
+    const message = validateField(key, form[key], hasFfl);
+    setFieldErrors((current) => {
+      if (message) {
+        if (current[key] === message) return current;
+        return { ...current, [key]: message };
+      }
+      if (!current[key]) return current;
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
   }
 
   function applySavedShipping(address: CustomerAddressRecord) {
     setSelectedShippingId(address.id);
     setSaveShippingToAccount(false);
-    setForm((current) => ({
-      ...current,
+    const next: FormState = {
+      ...form,
       recipientName: address.recipientName ?? "",
       phone: address.phone ?? "",
       line1: address.line1,
@@ -339,14 +448,16 @@ export default function CheckoutPage() {
       city: address.city,
       state: address.state,
       postalCode: address.postalCode,
-    }));
+    };
+    setForm(next);
+    setFieldErrors(validateForm(next, hasFfl));
   }
 
   function applySavedFfl(dealer: CustomerFflLocationRecord) {
     setSelectedFflId(dealer.id);
     setSaveFflToAccount(false);
-    setForm((current) => ({
-      ...current,
+    const next: FormState = {
+      ...form,
       fflName: dealer.fflName,
       fflNumber: dealer.fflNumber ?? "",
       fflContact: dealer.contactName ?? "",
@@ -358,13 +469,22 @@ export default function CheckoutPage() {
       fflState: dealer.address?.state ?? "",
       fflPostalCode: dealer.address?.postalCode ?? "",
       notes: dealer.notes ?? "",
-    }));
+    };
+    setForm(next);
+    setFieldErrors(validateForm(next, hasFfl));
   }
 
   function clearForDifferentShippingAddress() {
     setSelectedShippingId(null);
     setSaveShippingToAccount(false);
     setSaveMessage(null);
+    setFieldErrors((current) => {
+      const next = { ...current };
+      (Object.keys(blankShippingFields()) as (keyof FormState)[]).forEach((key) => {
+        delete next[key];
+      });
+      return next;
+    });
     setForm((current) => ({
       ...current,
       ...blankShippingFields(),
@@ -375,6 +495,13 @@ export default function CheckoutPage() {
     setSelectedFflId(null);
     setSaveFflToAccount(false);
     setSaveMessage(null);
+    setFieldErrors((current) => {
+      const next = { ...current };
+      (Object.keys(blankFflFields()) as (keyof FormState)[]).forEach((key) => {
+        delete next[key];
+      });
+      return next;
+    });
     setForm((current) => ({
       ...current,
       ...blankFflFields(),
@@ -490,12 +617,26 @@ export default function CheckoutPage() {
   }
 
   async function handleReviewOrder() {
-    if (!formIsComplete) {
+    const errors = validateForm(form, hasFfl);
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setReviewMessage("Fix the highlighted fields before continuing.");
+      const firstKey = (Object.keys(errors) as (keyof FormState)[])[0];
+      const target = document.getElementById(fieldId(firstKey));
+      target?.focus();
+      target?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
 
     await persistOptionalSelections();
+    setReviewMessage(null);
     setShowReview(true);
+  }
+
+  function handlePlaceOrder() {
+    setReviewMessage(
+      "Review is ready. Order submission still needs to be connected to payment and order creation.",
+    );
   }
 
   if (items.length === 0) {
@@ -572,6 +713,8 @@ export default function CheckoutPage() {
 
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_360px]">
           <div className="flex flex-col gap-6">
+            {!showReview ? (
+              <>
             <section className="bg-surface-container-low p-6">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-3">
@@ -620,14 +763,76 @@ export default function CheckoutPage() {
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Email" type="email" value={form.email} onChange={(value) => update("email", value)} />
-                <Field label="Phone" value={form.phone} onChange={(value) => update("phone", value)} />
-                <Field label="Recipient Name" value={form.recipientName} onChange={(value) => update("recipientName", value)} />
-                <Field label="Address Line 1" value={form.line1} onChange={(value) => update("line1", value)} />
-                <Field label="Address Line 2" optional value={form.line2} onChange={(value) => update("line2", value)} />
-                <Field label="City" value={form.city} onChange={(value) => update("city", value)} />
-                <Field label="State" value={form.state} onChange={(value) => update("state", value)} />
-                <Field label="Postal Code" value={form.postalCode} onChange={(value) => update("postalCode", value)} />
+                <Field
+                  id={fieldId("email")}
+                  label="Email"
+                  type="email"
+                  required
+                  value={form.email}
+                  onChange={(value) => update("email", value)}
+                  onBlur={() => handleBlur("email")}
+                  error={fieldErrors.email}
+                />
+                <Field
+                  id={fieldId("phone")}
+                  label="Phone"
+                  required
+                  value={form.phone}
+                  onChange={(value) => update("phone", value)}
+                  onBlur={() => handleBlur("phone")}
+                  error={fieldErrors.phone}
+                />
+                <Field
+                  id={fieldId("recipientName")}
+                  label="Recipient Name"
+                  required
+                  value={form.recipientName}
+                  onChange={(value) => update("recipientName", value)}
+                  onBlur={() => handleBlur("recipientName")}
+                  error={fieldErrors.recipientName}
+                />
+                <Field
+                  id={fieldId("line1")}
+                  label="Address Line 1"
+                  required
+                  value={form.line1}
+                  onChange={(value) => update("line1", value)}
+                  onBlur={() => handleBlur("line1")}
+                  error={fieldErrors.line1}
+                />
+                <Field
+                  id={fieldId("line2")}
+                  label="Address Line 2"
+                  value={form.line2}
+                  onChange={(value) => update("line2", value)}
+                />
+                <Field
+                  id={fieldId("city")}
+                  label="City"
+                  required
+                  value={form.city}
+                  onChange={(value) => update("city", value)}
+                  onBlur={() => handleBlur("city")}
+                  error={fieldErrors.city}
+                />
+                <Field
+                  id={fieldId("state")}
+                  label="State"
+                  required
+                  value={form.state}
+                  onChange={(value) => update("state", value)}
+                  onBlur={() => handleBlur("state")}
+                  error={fieldErrors.state}
+                />
+                <Field
+                  id={fieldId("postalCode")}
+                  label="Postal Code"
+                  required
+                  value={form.postalCode}
+                  onChange={(value) => update("postalCode", value)}
+                  onBlur={() => handleBlur("postalCode")}
+                  error={fieldErrors.postalCode}
+                />
               </div>
 
               {isSignedIn ? (
@@ -736,17 +941,93 @@ export default function CheckoutPage() {
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label="FFL Name" value={form.fflName} onChange={(value) => update("fflName", value)} />
-                  <Field label="FFL Number" optional value={form.fflNumber} onChange={(value) => update("fflNumber", value)} />
-                  <Field label="Contact Name" value={form.fflContact} onChange={(value) => update("fflContact", value)} />
-                  <Field label="FFL Phone" optional value={form.fflPhone} onChange={(value) => update("fflPhone", value)} />
-                  <Field label="FFL Email" type="email" optional value={form.fflEmail} onChange={(value) => update("fflEmail", value)} />
-                  <Field label="FFL Address Line 1" value={form.fflLine1} onChange={(value) => update("fflLine1", value)} />
-                  <Field label="FFL Address Line 2" optional value={form.fflLine2} onChange={(value) => update("fflLine2", value)} />
-                  <Field label="FFL City" value={form.fflCity} onChange={(value) => update("fflCity", value)} />
-                  <Field label="FFL State" value={form.fflState} onChange={(value) => update("fflState", value)} />
-                  <Field label="FFL Postal Code" value={form.fflPostalCode} onChange={(value) => update("fflPostalCode", value)} />
-                  <Field label="Notes" optional value={form.notes} onChange={(value) => update("notes", value)} />
+                  <Field
+                    id={fieldId("fflName")}
+                    label="FFL Name"
+                    required
+                    value={form.fflName}
+                    onChange={(value) => update("fflName", value)}
+                    onBlur={() => handleBlur("fflName")}
+                    error={fieldErrors.fflName}
+                  />
+                  <Field
+                    id={fieldId("fflNumber")}
+                    label="FFL Number"
+                    value={form.fflNumber}
+                    onChange={(value) => update("fflNumber", value)}
+                  />
+                  <Field
+                    id={fieldId("fflContact")}
+                    label="Contact Name"
+                    required
+                    value={form.fflContact}
+                    onChange={(value) => update("fflContact", value)}
+                    onBlur={() => handleBlur("fflContact")}
+                    error={fieldErrors.fflContact}
+                  />
+                  <Field
+                    id={fieldId("fflPhone")}
+                    label="FFL Phone"
+                    value={form.fflPhone}
+                    onChange={(value) => update("fflPhone", value)}
+                  />
+                  <Field
+                    id={fieldId("fflEmail")}
+                    label="FFL Email"
+                    type="email"
+                    value={form.fflEmail}
+                    onChange={(value) => update("fflEmail", value)}
+                    onBlur={() => handleBlur("fflEmail")}
+                    error={fieldErrors.fflEmail}
+                  />
+                  <Field
+                    id={fieldId("fflLine1")}
+                    label="FFL Address Line 1"
+                    required
+                    value={form.fflLine1}
+                    onChange={(value) => update("fflLine1", value)}
+                    onBlur={() => handleBlur("fflLine1")}
+                    error={fieldErrors.fflLine1}
+                  />
+                  <Field
+                    id={fieldId("fflLine2")}
+                    label="FFL Address Line 2"
+                    value={form.fflLine2}
+                    onChange={(value) => update("fflLine2", value)}
+                  />
+                  <Field
+                    id={fieldId("fflCity")}
+                    label="FFL City"
+                    required
+                    value={form.fflCity}
+                    onChange={(value) => update("fflCity", value)}
+                    onBlur={() => handleBlur("fflCity")}
+                    error={fieldErrors.fflCity}
+                  />
+                  <Field
+                    id={fieldId("fflState")}
+                    label="FFL State"
+                    required
+                    value={form.fflState}
+                    onChange={(value) => update("fflState", value)}
+                    onBlur={() => handleBlur("fflState")}
+                    error={fieldErrors.fflState}
+                  />
+                  <Field
+                    id={fieldId("fflPostalCode")}
+                    label="FFL Postal Code"
+                    required
+                    value={form.fflPostalCode}
+                    onChange={(value) => update("fflPostalCode", value)}
+                    onBlur={() => handleBlur("fflPostalCode")}
+                    error={fieldErrors.fflPostalCode}
+                  />
+                  <Field
+                    id={fieldId("notes")}
+                    label="Notes"
+                    value={form.notes}
+                    onChange={(value) => update("notes", value)}
+                  />
                 </div>
 
                 {isSignedIn ? (
@@ -857,7 +1138,7 @@ export default function CheckoutPage() {
               <div className="flex flex-wrap gap-3">
                 <Button
                   onClick={() => void handleReviewOrder()}
-                  disabled={!formIsComplete || savingSelections}
+                  disabled={savingSelections}
                   className="gradient-primary text-primary-foreground font-bold uppercase rounded-none border-0 gap-2 text-xs"
                   style={{ letterSpacing: "0.12em" }}
                 >
@@ -880,18 +1161,30 @@ export default function CheckoutPage() {
               {saveMessage ? (
                 <p className="mt-3 text-[11px] text-muted-foreground">{saveMessage}</p>
               ) : null}
+              {!saveMessage && reviewMessage ? (
+                <p className="mt-3 text-[11px] text-muted-foreground">{reviewMessage}</p>
+              ) : null}
             </section>
-
-            {showReview && (
+              </>
+            ) : (
               <section className="bg-surface-container-low p-6">
-                <p
-                  className="font-display text-[10px] font-semibold uppercase text-primary"
-                  style={{ letterSpacing: "0.16em" }}
-                >
-                  Review Snapshot
-                </p>
-                <div className="mt-4 grid gap-5 md:grid-cols-2">
+                <div className="flex items-start gap-3 mb-4">
+                  <WalletCards className="size-4 shrink-0 text-primary mt-0.5" />
                   <div>
+                    <p
+                      className="font-display text-[10px] font-semibold uppercase text-primary"
+                      style={{ letterSpacing: "0.16em" }}
+                    >
+                      Final Review
+                    </p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Confirm everything below before placing the order.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid gap-5 md:grid-cols-2">
+                  <div className="bg-surface-container p-5">
                     <p className="text-[10px] font-semibold uppercase text-muted-foreground/60" style={{ letterSpacing: "0.1em" }}>
                       Shipping
                     </p>
@@ -903,7 +1196,7 @@ export default function CheckoutPage() {
                   </div>
 
                   {hasFfl ? (
-                    <div>
+                    <div className="bg-surface-container p-5">
                       <p className="text-[10px] font-semibold uppercase text-muted-foreground/60" style={{ letterSpacing: "0.1em" }}>
                         Receiving FFL
                       </p>
@@ -918,9 +1211,73 @@ export default function CheckoutPage() {
                       {form.fflNumber ? <p className="text-sm text-muted-foreground">FFL #: {form.fflNumber}</p> : null}
                       {form.fflPhone ? <p className="text-sm text-muted-foreground">{form.fflPhone}</p> : null}
                       {form.fflEmail ? <p className="text-sm text-muted-foreground">{form.fflEmail}</p> : null}
+                      {form.notes ? <p className="text-sm text-muted-foreground">{form.notes}</p> : null}
                     </div>
                   ) : null}
                 </div>
+
+                <div className="mt-5">
+                  <p
+                    className="text-[10px] font-semibold uppercase text-muted-foreground/60"
+                    style={{ letterSpacing: "0.1em" }}
+                  >
+                    Line Items
+                  </p>
+                  <div className="mt-3 flex flex-col gap-3">
+                    {items.map((item) => (
+                      <div
+                        key={`review-${item.slug}-${item.sku}-${item.color ?? ""}-${item.size ?? ""}`}
+                        className="flex items-start justify-between gap-3 bg-surface-container px-4 py-4"
+                      >
+                        <div className="min-w-0">
+                          <p className="font-display text-[11px] font-semibold uppercase text-foreground" style={{ letterSpacing: "0.04em" }}>
+                            {item.name}
+                          </p>
+                          <p className="mt-0.5 text-[10px] uppercase text-muted-foreground/50" style={{ letterSpacing: "0.08em" }}>
+                            {item.sku} · QTY {item.quantity}
+                          </p>
+                          {(item.size || item.color) ? (
+                            <p className="mt-0.5 text-[10px] text-muted-foreground/60">
+                              {[item.size && `SIZE: ${item.size}`, item.color && `COLOR: ${item.color}`].filter(Boolean).join(" / ")}
+                            </p>
+                          ) : null}
+                          {item.requiresFFL ? (
+                            <p className="mt-1 text-[10px] uppercase text-primary" style={{ letterSpacing: "0.08em" }}>
+                              FFL Transfer Required
+                            </p>
+                          ) : null}
+                        </div>
+                        <span className="shrink-0 text-xs font-semibold text-foreground">
+                          {formatPrice(item.price * item.quantity)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <Button
+                    variant="outline"
+                    className="rounded-none border-border/30 text-[10px] font-bold uppercase"
+                    style={{ letterSpacing: "0.1em" }}
+                    onClick={() => setShowReview(false)}
+                  >
+                    <ArrowLeft className="size-3.5" />
+                    BACK TO DETAILS
+                  </Button>
+                  <Button
+                    onClick={handlePlaceOrder}
+                    className="gradient-primary text-primary-foreground font-bold uppercase rounded-none border-0 gap-2 text-xs"
+                    style={{ letterSpacing: "0.12em" }}
+                  >
+                    PLACE ORDER
+                    <Lock className="size-3.5" />
+                  </Button>
+                </div>
+
+                {reviewMessage ? (
+                  <p className="mt-3 text-[11px] text-muted-foreground">{reviewMessage}</p>
+                ) : null}
               </section>
             )}
           </div>
