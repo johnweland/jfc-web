@@ -1,10 +1,11 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname } from "node:path"
+import { tmpdir } from "node:os"
 
 import type { DuplicateInventoryBehavior } from "@/lib/inventory/csv/types"
 import type { InventoryItem } from "@/lib/types/inventory"
 
-const E2E_INVENTORY_STORE_PATH = "/private/tmp/jfc-e2e-inventory.json"
+const E2E_INVENTORY_STORE_PATH = `${tmpdir()}/jfc-e2e-inventory.json`
 
 function cloneItem(item: InventoryItem): InventoryItem {
   return JSON.parse(JSON.stringify(item)) as InventoryItem
