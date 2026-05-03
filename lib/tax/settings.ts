@@ -47,7 +47,13 @@ function getPublicClient() {
 
 export const getStoreTaxSettings = cache(async (): Promise<StoreTaxSettings> => {
   const client = getPublicClient()
-  const primary = await client.models.TaxSettings.get({ id: TAX_SETTINGS_ID })
+  const taxSettingsModel = client.models?.TaxSettings
+
+  if (!taxSettingsModel) {
+    return EMPTY_TAX_SETTINGS
+  }
+
+  const primary = await taxSettingsModel.get({ id: TAX_SETTINGS_ID })
 
   if (primary.errors?.length && !hasLegacyTaxFieldReadError(primary.errors)) {
     console.error("[tax/settings] getStoreTaxSettings errors", primary.errors)
@@ -86,7 +92,7 @@ export const getStoreTaxSettings = cache(async (): Promise<StoreTaxSettings> => 
     }
   }
 
-  const legacy = await client.models.TaxSettings.get(
+  const legacy = await taxSettingsModel.get(
     { id: TAX_SETTINGS_ID },
     { selectionSet: LEGACY_TAX_SETTINGS_SELECTION },
   )
