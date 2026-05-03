@@ -32,7 +32,9 @@ function hasLegacyTaxFieldReadError(errors: readonly { message: string }[] | und
         error.message.includes("/getTaxSettings/partExempt") ||
         error.message.includes("/getTaxSettings/accessoryExempt") ||
         error.message.includes("/getTaxSettings/apparelExempt") ||
-        error.message.includes("/getTaxSettings/otherExempt"),
+        error.message.includes("/getTaxSettings/otherExempt") ||
+        error.message.includes("/getTaxSettings/serviceExempt") ||
+        error.message.includes("/getTaxSettings/ammunitionExempt"),
     ),
   )
 }

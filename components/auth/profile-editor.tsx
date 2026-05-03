@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import {
   confirmUserAttribute,
   resendSignUpCode,
   sendUserAttributeVerificationCode,
   updateUserAttributes,
 } from "aws-amplify/auth";
+import { generateClient } from "aws-amplify/data";
 import { CheckCircle2, LoaderCircle, MailCheck, Pencil, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
+import type { Schema } from "@/amplify/data/resource";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -20,19 +22,59 @@ import {
 import { Input } from "@/components/ui/input";
 import type { AccountUserState } from "@/lib/auth/shared";
 
+const client = generateClient<Schema>();
+
 export function ProfileEditor({ user }: { user: AccountUserState }) {
   const router = useRouter();
   const [email, setEmail] = useState(user.email ?? "");
   const [givenName, setGivenName] = useState(user.givenName ?? "");
   const [familyName, setFamilyName] = useState(user.familyName ?? "");
+  const [phone, setPhone] = useState("");
+  const [savedPhone, setSavedPhone] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [pendingEmailConfirmation, setPendingEmailConfirmation] = useState(
     !user.emailVerified && Boolean(user.email)
   );
+  const [isLoadingProfile, setIsLoadingProfile] = useState(Boolean(user.cognitoSub));
   const [message, setMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (!user.cognitoSub) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void client.models.CustomerProfile.get({ customerId: user.cognitoSub })
+      .then((response) => {
+        if (cancelled) {
+          return;
+        }
+
+        if (response.errors?.length) {
+          throw new Error(response.errors[0].message);
+        }
+
+        const nextPhone = response.data?.phone ?? "";
+        setPhone(nextPhone);
+        setSavedPhone(nextPhone);
+      })
+      .catch((error) => {
+        console.error("[profile-editor] load profile failed", error);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoadingProfile(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user.cognitoSub]);
 
   function resetFeedback() {
     setErrorMessage(null);
@@ -48,6 +90,7 @@ export function ProfileEditor({ user }: { user: AccountUserState }) {
         const nextEmail = email.trim();
         const nextGivenName = givenName.trim();
         const nextFamilyName = familyName.trim();
+        const nextPhone = phone.trim();
         const fullName = [nextGivenName, nextFamilyName].filter(Boolean).join(" ");
 
         const result = await updateUserAttributes({
@@ -59,10 +102,52 @@ export function ProfileEditor({ user }: { user: AccountUserState }) {
           },
         });
 
+        if (user.cognitoSub) {
+          const existingProfile = await client.models.CustomerProfile.get({
+            customerId: user.cognitoSub,
+          });
+
+          if (existingProfile.errors?.length) {
+            throw new Error(existingProfile.errors[0].message);
+          }
+
+          const profilePayload = {
+            customerId: user.cognitoSub,
+            cognitoSub: user.cognitoSub,
+            email: nextEmail,
+            firstName: nextGivenName || null,
+            lastName: nextFamilyName || null,
+            phone: nextPhone || null,
+          };
+
+          if (existingProfile.data) {
+            const updateResult = await client.models.CustomerProfile.update({
+              ...profilePayload,
+              defaultShippingAddressId: existingProfile.data.defaultShippingAddressId ?? null,
+              defaultFflLocationId: existingProfile.data.defaultFflLocationId ?? null,
+            });
+
+            if (updateResult.errors?.length) {
+              throw new Error(updateResult.errors[0].message);
+            }
+          } else {
+            const createResult = await client.models.CustomerProfile.create({
+              ...profilePayload,
+              defaultShippingAddressId: null,
+              defaultFflLocationId: null,
+            });
+
+            if (createResult.errors?.length) {
+              throw new Error(createResult.errors[0].message);
+            }
+          }
+        }
+
         const emailUpdateStep = result.email?.nextStep.updateAttributeStep;
         const needsConfirmation = emailUpdateStep === "CONFIRM_ATTRIBUTE_WITH_CODE";
 
         setPendingEmailConfirmation(needsConfirmation);
+        setSavedPhone(nextPhone);
         setIsEditing(false);
         setMessage(
           needsConfirmation
@@ -172,6 +257,20 @@ export function ProfileEditor({ user }: { user: AccountUserState }) {
               />
             </div>
 
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium text-foreground" htmlFor="account-phone">
+                Phone number
+              </label>
+              <Input
+                autoComplete="tel"
+                id="account-phone"
+                onChange={(event) => setPhone(event.target.value)}
+                placeholder="Add a phone number for order contact"
+                type="tel"
+                value={phone}
+              />
+            </div>
+
             {errorMessage ? (
               <p className="text-sm text-destructive">{errorMessage}</p>
             ) : message ? (
@@ -189,6 +288,7 @@ export function ProfileEditor({ user }: { user: AccountUserState }) {
                   setGivenName(user.givenName ?? "");
                   setFamilyName(user.familyName ?? "");
                   setEmail(user.email ?? "");
+                  setPhone(savedPhone);
                   resetFeedback();
                   setIsEditing(false);
                 }}
@@ -201,7 +301,7 @@ export function ProfileEditor({ user }: { user: AccountUserState }) {
           </form>
         ) : (
           <div className="flex flex-col gap-4">
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-3">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/60">
                   Name
@@ -213,6 +313,14 @@ export function ProfileEditor({ user }: { user: AccountUserState }) {
                   Email
                 </p>
                 <p className="mt-1 text-sm text-foreground">{user.email ?? "No email on file"}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/60">
+                  Phone
+                </p>
+                <p className="mt-1 text-sm text-foreground">
+                  {isLoadingProfile ? "Loading..." : savedPhone || "No phone on file"}
+                </p>
               </div>
             </div>
 

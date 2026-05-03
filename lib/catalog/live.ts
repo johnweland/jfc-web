@@ -40,7 +40,14 @@ function slugify(value: string) {
 }
 
 function toProductSlug(item: InventoryItem) {
-  return slugify(item.name || item.sku || item.id)
+  const baseSlug = slugify(item.name || item.sku || item.id)
+  const uniqueToken = slugify(item.sku || item.id)
+
+  if (!uniqueToken || uniqueToken === baseSlug || baseSlug.endsWith(`-${uniqueToken}`)) {
+    return baseSlug
+  }
+
+  return `${baseSlug}-${uniqueToken}`
 }
 
 function splitDelimitedValues(value?: string) {

@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Search, ShoppingCart, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/lib/cart/context";
+import { cn } from "@/lib/utils";
 
 const navLinks = [
   { label: "FIREARMS", href: "/firearms" },
@@ -13,6 +15,7 @@ const navLinks = [
 ];
 
 export function Navbar() {
+  const pathname = usePathname();
   const { itemCount, openCart } = useCart();
 
   return (
@@ -36,17 +39,30 @@ export function Navbar() {
           </Link>
 
           {/* Nav links */}
-          <nav className="hidden md:flex items-center gap-8">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="font-display text-xs font-semibold uppercase text-muted-foreground transition-colors hover:text-accent"
-                style={{ letterSpacing: "0.12em" }}
-              >
-                {link.label}
-              </Link>
-            ))}
+          <nav className="hidden md:flex items-center gap-2">
+            {navLinks.map((link) => {
+              const isActive =
+                link.href === "/"
+                  ? pathname === link.href
+                  : pathname === link.href || pathname.startsWith(`${link.href}/`);
+
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  aria-current={isActive ? "page" : undefined}
+                  className={cn(
+                    "flex min-h-10 items-center px-4 font-display text-xs font-semibold uppercase transition-colors",
+                    isActive
+                      ? "bg-surface-container-highest text-foreground"
+                      : "text-muted-foreground hover:bg-surface-container-high hover:text-accent",
+                  )}
+                  style={{ letterSpacing: "0.12em" }}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
           </nav>
 
           {/* Action icons */}
