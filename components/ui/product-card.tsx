@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Heart } from "lucide-react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { AvailabilityBadge } from "@/components/ui/availability-badge";
@@ -45,6 +46,8 @@ export function ProductCard({ product, className }: ProductCardProps) {
   const isOutOfStock = product.status === "backordered";
   const { addItem } = useCart();
   const { isFavorited, toggle: toggleFavorite } = useFavorites();
+  const [primaryImage, setPrimaryImage] = useState(product.images[0] ?? "/placeholder.svg");
+  const isPlaceholderImage = primaryImage === "/placeholder.svg";
 
   function handleCta(e: React.MouseEvent) {
     // Firearms and apparel require a detail-page step before carting.
@@ -73,13 +76,18 @@ export function ProductCard({ product, className }: ProductCardProps) {
     >
       {/* Image */}
       <Link href={href} className="relative block overflow-hidden aspect-[4/3] bg-surface-container">
-        {product.images[0] ? (
+        {primaryImage ? (
           <Image
-            src={product.images[0]}
+            src={primaryImage}
             alt={product.name}
             fill
-            className="object-cover"
+            className={
+              isPlaceholderImage
+                ? "absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
+                : "object-cover"
+            }
             sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 25vw"
+            onError={() => setPrimaryImage("/placeholder.svg")}
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">

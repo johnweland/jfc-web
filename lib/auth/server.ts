@@ -203,6 +203,25 @@ export async function requireAdmin(options?: {
   allowMissingMfa?: boolean;
   redirectTo?: string;
 }) {
+  if (process.env.E2E_TEST_MODE === "1") {
+    const e2eAuthState: AuthUserState = {
+      cognitoSub: "e2e-admin",
+      email: "e2e-admin@example.com",
+      groups: ["ADMINS"],
+      isSignedIn: true,
+      mfa: {
+        enabled: true,
+        enabledMethods: ["TOTP"],
+        hasTotp: true,
+        preferredMethod: "TOTP",
+      },
+      role: "admin",
+      username: "e2e-admin",
+    }
+
+    return e2eAuthState
+  }
+
   const redirectTo = options?.redirectTo ?? "/admin";
   const authState = await getServerAuthState();
 

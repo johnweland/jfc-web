@@ -1,4 +1,4 @@
-export type InventoryItemType = "FIREARM" | "PART" | "ACCESSORY" | "APPAREL" | "OTHER"
+export type InventoryItemType = "FIREARM" | "PART" | "ACCESSORY" | "APPAREL" | "OTHER" | "SERVICES" | "AMMUNITION"
 export type InventoryStatus = "DRAFT" | "AVAILABLE" | "RESERVED" | "SOLD" | "ARCHIVED"
 export type InventorySource = "MANUAL" | "ROCPAY" | "FFLSAFE"
 export type InventoryTaxMode = "DEFAULT" | "CATEGORY" | "CUSTOM" | "EXEMPT"

@@ -17,7 +17,7 @@ export default function AdminSettingsPage() {
           TAX SETTINGS
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Set the store default tax rate and optional category overrides for storefront totals.
+          Set the combined storefront default from state and local tax, then configure category overrides or exemptions.
         </p>
       </div>
 
