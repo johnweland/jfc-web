@@ -12,6 +12,7 @@ const categories = [
     accent: "Rifles · Handguns · Shotguns",
     colSpan: "lg:col-span-2",
     rowHeight: "h-80 lg:h-96",
+    backgroundImage: "/firearms_category.png",
   },
   {
     label: "PARTS",
@@ -20,6 +21,7 @@ const categories = [
     accent: "BCGs · Triggers · Optics · More",
     colSpan: "lg:col-span-1",
     rowHeight: "h-80 lg:h-96",
+    backgroundImage: "/parts_category.png",
   },
   {
     label: "APPAREL",
@@ -28,6 +30,7 @@ const categories = [
     accent: "Tees · Hats · Hoodies · Gear",
     colSpan: "lg:col-span-1",
     rowHeight: "h-80",
+    backgroundImage: "/apparel_category.png",
   },
 ];
 
@@ -127,6 +130,13 @@ export default async function HomePage() {
                 href={cat.href}
                 className={`group relative flex flex-col justify-end bg-surface-container-high overflow-hidden ${cat.colSpan} ${cat.rowHeight} p-8 transition-colors hover:bg-surface-bright`}
               >
+                {cat.backgroundImage ? (
+                  <div
+                    className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-500 group-hover:scale-105"
+                    style={{ backgroundImage: `url(${cat.backgroundImage})` }}
+                  />
+                ) : null}
+
                 {/* Gradient overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-surface-container-lowest/80 to-transparent" />
 
