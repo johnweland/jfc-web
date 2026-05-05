@@ -1,6 +1,6 @@
 import Papa from "papaparse"
 
-import type { InventoryItem, InventoryTaxMode } from "@/lib/types/inventory"
+import type { InventoryItem, InventoryTaxMode, InventoryUnit } from "@/lib/types/inventory"
 import type {
   InventoryImportPreview,
   ParsedInventoryRow,
@@ -158,6 +158,18 @@ export function parseRocPayInventoryCsv(
 
   annotateDuplicateSkus(rows, existingItems)
 
+  // Warn when a RocPay row would touch a serialized SKU's quantity.
+  // RocPay imports don't carry serial numbers; per-unit data must be entered manually.
+  for (const row of rows) {
+    if (!row.matchedInventoryItemId) continue
+    const matched = existingItems.find((i) => i.id === row.matchedInventoryItemId)
+    if (matched?.isSerialized) {
+      row.warnings.push(
+        `Serialized SKU; create units manually from /admin/inventory/${matched.id}.`,
+      )
+    }
+  }
+
   if (missingHeaders.length > 0) {
     for (const row of rows) {
       row.errors.push(
@@ -175,13 +187,18 @@ export function parseRocPayInventoryCsv(
   }
 }
 
-export function exportInventoryToRocPayCsv(items: InventoryItem[]) {
-  const rows = items.map((item) => ({
+function buildRocPayRowFromItem(item: InventoryItem, quantity: number, cost?: number) {
+  return {
     SKU: item.sku || item.name,
     DESCRIPTION: item.description ?? "",
     CATEGORY: item.category ?? "",
-    QUANTITY: String(item.quantity),
-    UNITCOST: typeof item.cost === "number" ? item.cost.toFixed(2) : "",
+    QUANTITY: String(quantity),
+    UNITCOST:
+      typeof cost === "number"
+        ? cost.toFixed(2)
+        : typeof item.cost === "number"
+          ? item.cost.toFixed(2)
+          : "",
     TAXABLE: item.taxMode === "EXEMPT" ? "No" : "Yes",
     INVENTORY: item.itemType === "SERVICES" ? "No" : "Yes",
     "IS_PINNED": "NO",
@@ -190,7 +207,39 @@ export function exportInventoryToRocPayCsv(items: InventoryItem[]) {
     ITEMNAME: item.name,
     "UNIT OF MEASURE": "",
     "COMMODITY CODE": "",
-  }))
+  }
+}
+
+/**
+ * RocPay export.
+ *
+ * For serialized items, emit one row per AVAILABLE unit (RocPay treats each row as one
+ * sellable line item with QUANTITY=1). For non-serialized items, emit a single
+ * aggregated row using the item's `quantity`.
+ *
+ * `unitsByItemId` is optional; when omitted, serialized items fall back to a single
+ * aggregated row (legacy behavior) so callers with no unit data still get a valid CSV.
+ */
+export function exportInventoryToRocPayCsv(
+  items: InventoryItem[],
+  unitsByItemId?: Map<string, InventoryUnit[]>,
+) {
+  const rows: ReturnType<typeof buildRocPayRowFromItem>[] = []
+
+  for (const item of items) {
+    if (item.isSerialized && unitsByItemId) {
+      const available = (unitsByItemId.get(item.id) ?? []).filter(
+        (u) => u.status === "AVAILABLE",
+      )
+      if (available.length > 0) {
+        for (const unit of available) {
+          rows.push(buildRocPayRowFromItem(item, 1, unit.cost))
+        }
+        continue
+      }
+    }
+    rows.push(buildRocPayRowFromItem(item, item.quantity, item.cost))
+  }
 
   return Papa.unparse(rows, {
     columns: [...ROCPAY_HEADERS],

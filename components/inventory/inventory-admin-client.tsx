@@ -10,7 +10,7 @@ import { InventoryCsvActions } from "@/components/inventory/inventory-csv-action
 import { InventoryTable } from "@/components/inventory/inventory-table"
 import { Button } from "@/components/ui/button"
 import { fromAmplifyRecord } from "@/lib/inventory/mapper"
-import type { InventoryItem } from "@/lib/types/inventory"
+import type { InventoryItem, InventoryUnit } from "@/lib/types/inventory"
 
 const client = generateClient<Schema>()
 const INVENTORY_LIST_LIMIT = 1000
@@ -26,8 +26,11 @@ const ADMIN_INVENTORY_SELECTION = [
   "manufacturer",
   "brand",
   "model",
+  "condition",
   "status",
   "isSerialized",
+  "isOneOff",
+  "sourceType",
   "quantity",
   "unitPrice",
   "taxMode",
@@ -97,12 +100,15 @@ async function listAllInventoryItemsClientSide(isE2eTestMode: boolean) {
 
 export function InventoryAdminClient({
   initialItems,
+  initialUnits = [],
   isE2eTestMode = false,
 }: {
   initialItems: InventoryItem[]
+  initialUnits?: InventoryUnit[]
   isE2eTestMode?: boolean
 }) {
   const [items, setItems] = useState(initialItems)
+  const [units] = useState(initialUnits)
   const [loadError, setLoadError] = useState<string | null>(null)
 
   async function refreshItems() {
@@ -155,6 +161,7 @@ export function InventoryAdminClient({
         <div className="flex flex-wrap items-center justify-end gap-2">
           <InventoryCsvActions
             items={items}
+            units={units}
             onInventoryChanged={refreshItems}
             isE2eTestMode={isE2eTestMode}
           />

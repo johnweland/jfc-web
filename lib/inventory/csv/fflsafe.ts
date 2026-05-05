@@ -1,10 +1,11 @@
 import Papa from "papaparse"
 
-import type { InventoryItem } from "@/lib/types/inventory"
+import type { InventoryItem, InventoryUnit } from "@/lib/types/inventory"
 import type { InventoryImportPreview, ParsedInventoryRow } from "@/lib/inventory/csv/types"
 import { FFLSAFE_HEADERS } from "@/lib/inventory/csv/types"
 import {
   annotateDuplicateSkus,
+  annotateDuplicateUnits,
   buildNotes,
   findMissingHeaders,
   formatDateOnly,
@@ -81,39 +82,60 @@ function buildFflSafeImportRow(
   const name = [manufacturer, model, serialNumber].filter(Boolean).join(" ") || `FFLSafe firearm ${rowNumber}`
   const normalizedType = normalizeFirearmType(type)
 
+  const itemId = crypto.randomUUID()
+  const item: InventoryItem = {
+    id: itemId,
+    itemType: "FIREARM",
+    // The InventoryItem represents the SKU; status reflects the SKU's lifecycle.
+    // Per-unit status (SOLD/AVAILABLE) lives on the InventoryUnit.
+    status: "AVAILABLE",
+    name,
+    category: type || undefined,
+    description: notes || undefined,
+    manufacturer: manufacturer || undefined,
+    brand: manufacturer || undefined,
+    model: model || undefined,
+    price: 0,
+    quantity: 0, // derived; sync'd by units/data.ts after units land
+    taxMode: "DEFAULT",
+    sourceSystem: "FFLSAFE",
+    // SKU-level identifier — different from the per-unit serial.
+    sourceId: undefined,
+    importBatchId,
+    isSerialized: true,
+    sourceType: "IMPORTED",
+    firearm: {
+      serialNumber: undefined,
+      caliber: caliberOrGauge || undefined,
+      gauge: undefined,
+      firearmType: normalizedType,
+      action: type || undefined,
+      requiresFflTransfer: true,
+    },
+    images: [],
+    createdAt,
+    updatedAt: nowIso,
+  }
+
+  const unit: Partial<InventoryUnit> = {
+    inventoryItemId: itemId,
+    serialNumber: serialNumber || "",
+    status: disposeDate ? "SOLD" : "AVAILABLE",
+    sourceType: "IMPORTED",
+    sourceSystem: "FFLSAFE",
+    sourceId: serialNumber || undefined,
+    acquisitionDate: formatDateOnly(acquireDate) || undefined,
+    importBatchId,
+    notes: notes || undefined,
+  }
+
   return {
     rowNumber,
     raw: rawRow,
     warnings,
     errors: [],
-    item: {
-      id: crypto.randomUUID(),
-      itemType: "FIREARM",
-      status: disposeDate ? "SOLD" : "AVAILABLE",
-      name,
-      category: type || undefined,
-      description: notes || undefined,
-      manufacturer: manufacturer || undefined,
-      brand: manufacturer || undefined,
-      model: model || undefined,
-      price: 0,
-      quantity: 1,
-      taxMode: "DEFAULT",
-      sourceSystem: "FFLSAFE",
-      sourceId: serialNumber || undefined,
-      importBatchId,
-      firearm: {
-        serialNumber: serialNumber || undefined,
-        caliber: caliberOrGauge || undefined,
-        gauge: undefined,
-        firearmType: normalizedType,
-        action: type || undefined,
-        requiresFflTransfer: true,
-      },
-      images: [],
-      createdAt,
-      updatedAt: nowIso,
-    },
+    item,
+    unit,
   }
 }
 
@@ -121,6 +143,7 @@ export function parseFflSafeCsv(
   csvText: string,
   existingItems: InventoryItem[] = [],
   importBatchId = `fflsafe-${Date.now()}`,
+  existingUnits: { id: string; serialNumber: string }[] = [],
 ): InventoryImportPreview {
   const parsed = Papa.parse<Record<string, string>>(csvText, {
     header: true,
@@ -145,6 +168,7 @@ export function parseFflSafeCsv(
   }
 
   annotateDuplicateSkus(rows, existingItems)
+  annotateDuplicateUnits(rows, existingUnits)
 
   if (missingHeaders.length > 0) {
     for (const row of rows) {
@@ -163,24 +187,66 @@ export function parseFflSafeCsv(
   }
 }
 
-export function exportInventoryToFflSafeCsv(items: InventoryItem[]) {
+/**
+ * FFLSafe export — bound-book format, one row per physical firearm (serialized unit).
+ *
+ * When `unitsByItemId` is provided, emits one row per unit using the unit's serial
+ * and acquisition data. When omitted, falls back to the legacy single-row-per-item
+ * shape using the item's flat `firearm.serialNumber` (pre-migration compatibility).
+ *
+ * Non-firearm items are filtered out — FFLSafe only tracks firearms.
+ */
+export function exportInventoryToFflSafeCsv(
+  items: InventoryItem[],
+  unitsByItemId?: Map<string, InventoryUnit[]>,
+) {
   const firearmItems = items.filter((item) => item.itemType === "FIREARM")
+  const rows: Array<Record<(typeof FFLSAFE_HEADERS)[number], string>> = []
 
-  const rows = firearmItems.map((item) => ({
-    'Manufacturer or "privately made firearm" (PMF)': item.manufacturer || item.brand || "",
-    "Importer (if any)": "",
-    Model: item.model ?? "",
-    "Serial No.": item.firearm?.serialNumber ?? "",
-    Type: item.firearm?.firearmType ?? item.firearm?.action ?? "",
-    "Caliber or gauge": item.firearm?.caliber ?? item.firearm?.gauge ?? "",
-    "Acquire Date": formatDateOnly(item.createdAt),
-    "Name and address of nonlicensee; or if licensee, name and license No.": "",
-    "Dispose Date": "",
-    "Dispose Name": "",
-    "Address of nonlicensee; license No. of licensee; or Form 4473 transaction No. if such forms filed numerically":
-      "",
-    Notes: buildNotes(item),
-  }))
+  for (const item of firearmItems) {
+    const units = unitsByItemId?.get(item.id) ?? []
+
+    if (units.length > 0) {
+      for (const unit of units) {
+        rows.push({
+          'Manufacturer or "privately made firearm" (PMF)':
+            item.manufacturer || item.brand || "",
+          "Importer (if any)": "",
+          Model: item.model ?? "",
+          "Serial No.": unit.serialNumber,
+          Type: item.firearm?.firearmType ?? item.firearm?.action ?? "",
+          "Caliber or gauge": item.firearm?.caliber ?? item.firearm?.gauge ?? "",
+          "Acquire Date": formatDateOnly(unit.acquisitionDate ?? unit.createdAt),
+          "Name and address of nonlicensee; or if licensee, name and license No.":
+            unit.acquisitionSourceName ?? "",
+          "Dispose Date": unit.status === "SOLD" ? formatDateOnly(unit.updatedAt) : "",
+          "Dispose Name": "",
+          "Address of nonlicensee; license No. of licensee; or Form 4473 transaction No. if such forms filed numerically":
+            "",
+          Notes: buildNotes(item),
+        })
+      }
+      continue
+    }
+
+    // Legacy fallback — pre-migration items with a single flat serial number.
+    rows.push({
+      'Manufacturer or "privately made firearm" (PMF)':
+        item.manufacturer || item.brand || "",
+      "Importer (if any)": "",
+      Model: item.model ?? "",
+      "Serial No.": item.firearm?.serialNumber ?? "",
+      Type: item.firearm?.firearmType ?? item.firearm?.action ?? "",
+      "Caliber or gauge": item.firearm?.caliber ?? item.firearm?.gauge ?? "",
+      "Acquire Date": formatDateOnly(item.createdAt),
+      "Name and address of nonlicensee; or if licensee, name and license No.": "",
+      "Dispose Date": "",
+      "Dispose Name": "",
+      "Address of nonlicensee; license No. of licensee; or Form 4473 transaction No. if such forms filed numerically":
+        "",
+      Notes: buildNotes(item),
+    })
+  }
 
   return Papa.unparse(rows, {
     columns: [...FFLSAFE_HEADERS],

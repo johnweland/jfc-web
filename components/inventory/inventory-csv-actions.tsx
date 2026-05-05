@@ -42,7 +42,8 @@ import type {
   ParsedInventoryRow,
 } from "@/lib/inventory/csv/types"
 import { toAmplifyCreateInput, toAmplifyUpdateInput } from "@/lib/inventory/mapper"
-import type { InventoryItem } from "@/lib/types/inventory"
+import type { InventoryItem, InventoryUnit } from "@/lib/types/inventory"
+import { createUnitFromImportAction } from "./inventory-units-actions"
 
 const client = generateClient<Schema>()
 const INVENTORY_LIST_LIMIT = 1000
@@ -58,11 +59,12 @@ function buildImportPreview(
   csvText: string,
   source: InventoryImportSource,
   existingItems: InventoryItem[],
+  existingUnits: InventoryUnit[] = [],
 ) {
   const importBatchId = `${source.toLowerCase()}-${Date.now()}`
 
   if (source === "FFLSAFE") {
-    return parseFflSafeCsv(csvText, existingItems, importBatchId)
+    return parseFflSafeCsv(csvText, existingItems, importBatchId, existingUnits)
   }
 
   return parseRocPayInventoryCsv(csvText, existingItems, importBatchId)
@@ -268,10 +270,12 @@ function PreviewTable({ rows }: { rows: ParsedInventoryRow[] }) {
 
 export function InventoryCsvActions({
   items,
+  units = [],
   onInventoryChanged,
   isE2eTestMode = false,
 }: {
   items: InventoryItem[]
+  units?: InventoryUnit[]
   onInventoryChanged?: () => Promise<void> | void
   isE2eTestMode?: boolean
 }) {
@@ -300,8 +304,18 @@ export function InventoryCsvActions({
       return null
     }
 
-    return buildImportPreview(csvText, importSource, items)
-  }, [csvText, importSource, items])
+    return buildImportPreview(csvText, importSource, items, units)
+  }, [csvText, importSource, items, units])
+
+  const unitsByItemId = useMemo(() => {
+    const map = new Map<string, InventoryUnit[]>()
+    for (const unit of units) {
+      const list = map.get(unit.inventoryItemId) ?? []
+      list.push(unit)
+      map.set(unit.inventoryItemId, list)
+    }
+    return map
+  }, [units])
 
   const exportWarnings = useMemo(() => {
     if (exportDestination !== "FFLSAFE") {
@@ -334,11 +348,17 @@ export function InventoryCsvActions({
   function handleDownload() {
     const stamp = new Date().toISOString().slice(0, 10)
     if (exportDestination === "FFLSAFE") {
-      downloadCsv(`inventory-fflsafe-${stamp}.csv`, exportInventoryToFflSafeCsv(items))
+      downloadCsv(
+        `inventory-fflsafe-${stamp}.csv`,
+        exportInventoryToFflSafeCsv(items, unitsByItemId),
+      )
       return
     }
 
-    downloadCsv(`inventory-rocpay-${stamp}.csv`, exportInventoryToRocPayCsv(items))
+    downloadCsv(
+      `inventory-rocpay-${stamp}.csv`,
+      exportInventoryToRocPayCsv(items, unitsByItemId),
+    )
   }
 
   function handleImportConfirm() {
@@ -409,6 +429,23 @@ export function InventoryCsvActions({
         } else {
           result.created += 1
           workingInventory.push(payload)
+        }
+
+        // FFLSafe rows carry per-unit serial data. After the parent item lands,
+        // create the matching InventoryUnit unless this serial already exists.
+        if (
+          preview.format === "FFLSAFE" &&
+          row.unit?.serialNumber &&
+          !row.matchedInventoryUnitId
+        ) {
+          try {
+            await createUnitFromImportAction(payload.id, row.unit)
+          } catch (err) {
+            result.failed.push({
+              rowNumber: row.rowNumber,
+              reason: err instanceof Error ? err.message : "Unit create failed.",
+            })
+          }
         }
       }
 

@@ -27,6 +27,7 @@ declare module "papaparse" {
   const Papa: {
     parse<T = Record<string, string>>(input: string, config?: ParseConfig): ParseResult<T>
     unparse<T extends Record<string, unknown>>(data: T[], config?: UnparseConfig): string
+    unparse(data: { fields: readonly string[]; data: unknown[][] }, config?: UnparseConfig): string
   }
 
   export default Papa

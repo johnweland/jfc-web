@@ -1,4 +1,4 @@
-import type { InventoryItem } from "@/lib/types/inventory"
+import type { InventoryItem, InventoryUnit } from "@/lib/types/inventory"
 
 export type InventoryImportSource = "ROCPAY" | "FFLSAFE"
 export type InventoryExportDestination = "ROCPAY" | "FFLSAFE"
@@ -25,11 +25,18 @@ export type ParsedInventoryRow = {
   rowNumber: number
   raw: Record<string, string>
   item?: InventoryItem
+  /**
+   * Optional per-row unit (FFLSafe rows are always one-firearm-per-row, so the
+   * unit lives alongside the parent item draft for that row).
+   */
+  unit?: Partial<InventoryUnit>
   warnings: string[]
   errors: string[]
   duplicateSkuInFile?: string
   duplicateSkuInInventory?: string
+  duplicateSerialInInventory?: string
   matchedInventoryItemId?: string
+  matchedInventoryUnitId?: string
 }
 
 export type InventoryImportPreview = {

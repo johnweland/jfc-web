@@ -1,5 +1,6 @@
 import type { Schema } from "@/amplify/data/resource"
 import type {
+  AcquisitionSourceType,
   InventoryApparelVariant,
   InventoryItem,
   InventoryImage,
@@ -7,11 +8,16 @@ import type {
   InventoryStatus,
   InventorySource,
   InventoryTaxMode,
+  InventoryUnit,
+  InventoryUnitStatus,
 } from "@/lib/types/inventory"
 
 type AmplifyRecord = Schema["InventoryItem"]["type"]
 type AmplifyCreateInput = Schema["InventoryItem"]["createType"]
 type AmplifyUpdateInput = Schema["InventoryItem"]["updateType"]
+type AmplifyUnitRecord = Schema["InventoryUnit"]["type"]
+type AmplifyUnitCreateInput = Schema["InventoryUnit"]["createType"]
+type AmplifyUnitUpdateInput = Schema["InventoryUnit"]["updateType"]
 
 function asInventoryImages(value: unknown): InventoryImage[] | undefined {
   if (!value) {
@@ -82,6 +88,10 @@ export function fromAmplifyRecord(r: AmplifyRecord): InventoryItem {
     sourceSystem: ((r.sourceSystem as string | null) ?? "MANUAL") as InventorySource,
     sourceId: (r.sourceId as string | null) ?? undefined,
     importBatchId: (r.importBatchId as string | null) ?? undefined,
+    isSerialized: r.isSerialized ?? false,
+    isOneOff: (r as { isOneOff?: boolean | null }).isOneOff ?? false,
+    sourceType:
+      ((r as { sourceType?: string | null }).sourceType as AcquisitionSourceType | null) ?? undefined,
     firearm:
       r.itemType === "FIREARM"
         ? {
@@ -91,7 +101,7 @@ export function fromAmplifyRecord(r: AmplifyRecord): InventoryItem {
             action: r.action ?? undefined,
             barrelLength: r.barrelLength ?? undefined,
             capacity: r.capacity ?? undefined,
-            finish: undefined,
+            finish: r.condition ?? undefined,
             firearmType: r.firearmType ?? undefined,
             requiresFflTransfer: r.fflRequired,
           }
@@ -136,7 +146,13 @@ export function toAmplifyCreateInput(item: InventoryItem): AmplifyCreateInput {
     quantity: item.quantity,
     taxMode: item.taxMode as AmplifyCreateInput["taxMode"],
     customTaxRate: item.customTaxRate,
-    isSerialized: item.itemType === "FIREARM" && !!item.firearm?.serialNumber,
+    // Honor an explicit isSerialized flag from the form, otherwise infer it from a present serial.
+    isSerialized:
+      typeof item.isSerialized === "boolean"
+        ? item.isSerialized
+        : item.itemType === "FIREARM" && !!item.firearm?.serialNumber,
+    isOneOff: item.isOneOff ?? false,
+    sourceType: item.sourceType as AmplifyCreateInput["sourceType"],
     fflRequired: item.firearm?.requiresFflTransfer ?? false,
     description: item.description,
     manufacturer: item.manufacturer,
@@ -153,6 +169,7 @@ export function toAmplifyCreateInput(item: InventoryItem): AmplifyCreateInput {
     action: item.firearm?.action,
     barrelLength: item.firearm?.barrelLength,
     capacity: item.firearm?.capacity,
+    condition: item.firearm?.finish,
     firearmType: item.firearm?.firearmType as AmplifyCreateInput["firearmType"],
     // Apparel fields (flat in schema)
     size:
@@ -184,4 +201,62 @@ export function toAmplifyUpdateInput(item: InventoryItem): AmplifyUpdateInput {
   const { internalSku: _internalSku, ...rest } = toAmplifyCreateInput(item) as AmplifyCreateInput & { internalSku?: string }
   void _internalSku
   return { id: item.id, ...rest }
+}
+
+// ---------------------------------------------------------------------------
+// InventoryUnit ↔ Amplify
+// ---------------------------------------------------------------------------
+
+export function fromAmplifyUnitRecord(r: AmplifyUnitRecord): InventoryUnit {
+  return {
+    id: r.id,
+    inventoryItemId: r.inventoryItemId,
+    serialNumber: r.serialNumber,
+    status: r.status as InventoryUnitStatus,
+    location: r.location ?? undefined,
+    cost: r.cost ?? undefined,
+    acquisitionDate: r.acquisitionDate ?? undefined,
+    acquisitionSourceName: r.acquisitionSourceName ?? undefined,
+    acquisitionSourceFfl: r.acquisitionSourceFfl ?? undefined,
+    sourceType: r.sourceType as AcquisitionSourceType,
+    consignorName: r.consignorName ?? undefined,
+    consignorContact: r.consignorContact ?? undefined,
+    consignmentTerms: r.consignmentTerms ?? undefined,
+    rocpayExportedAt: r.rocpayExportedAt ?? undefined,
+    fflSafeExportedAt: r.fflSafeExportedAt ?? undefined,
+    importBatchId: r.importBatchId ?? undefined,
+    sourceSystem: (r.sourceSystem as InventorySource | null) ?? undefined,
+    sourceId: r.sourceId ?? undefined,
+    notes: r.notes ?? undefined,
+    createdAt: r.createdAt ?? new Date().toISOString(),
+    updatedAt: r.updatedAt ?? new Date().toISOString(),
+  }
+}
+
+export function toAmplifyUnitCreateInput(unit: InventoryUnit): AmplifyUnitCreateInput {
+  return {
+    id: unit.id,
+    inventoryItemId: unit.inventoryItemId,
+    serialNumber: unit.serialNumber,
+    status: unit.status as AmplifyUnitCreateInput["status"],
+    location: unit.location,
+    cost: unit.cost,
+    acquisitionDate: unit.acquisitionDate,
+    acquisitionSourceName: unit.acquisitionSourceName,
+    acquisitionSourceFfl: unit.acquisitionSourceFfl,
+    sourceType: unit.sourceType as AmplifyUnitCreateInput["sourceType"],
+    consignorName: unit.consignorName,
+    consignorContact: unit.consignorContact,
+    consignmentTerms: unit.consignmentTerms,
+    rocpayExportedAt: unit.rocpayExportedAt,
+    fflSafeExportedAt: unit.fflSafeExportedAt,
+    importBatchId: unit.importBatchId,
+    sourceSystem: unit.sourceSystem,
+    sourceId: unit.sourceId,
+    notes: unit.notes,
+  }
+}
+
+export function toAmplifyUnitUpdateInput(unit: InventoryUnit): AmplifyUnitUpdateInput {
+  return { ...toAmplifyUnitCreateInput(unit), id: unit.id }
 }

@@ -1,0 +1,65 @@
+import { describe, expect, it } from "vitest"
+
+import { fromAmplifyRecord, toAmplifyCreateInput, toAmplifyUpdateInput } from "@/lib/inventory/mapper"
+import type { InventoryItem } from "@/lib/types/inventory"
+
+function makeInventoryItem(overrides: Partial<InventoryItem> = {}): InventoryItem {
+  return {
+    id: "item-1",
+    itemType: "FIREARM",
+    status: "AVAILABLE",
+    name: "Test Rifle",
+    price: 1299,
+    quantity: 1,
+    taxMode: "DEFAULT",
+    sourceSystem: "MANUAL",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    firearm: {
+      finish: "Matte Black",
+      requiresFflTransfer: true,
+    },
+    ...overrides,
+  }
+}
+
+describe("inventory mapper finish field", () => {
+  it("maps firearm finish from Amplify condition into the UI model", () => {
+    const record = {
+      id: "item-1",
+      itemType: "FIREARM",
+      title: "Test Rifle",
+      status: "AVAILABLE",
+      unitPrice: 1299,
+      quantity: 1,
+      taxMode: "DEFAULT",
+      sourceSystem: "MANUAL",
+      condition: "Matte Black",
+      fflRequired: true,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    } as Parameters<typeof fromAmplifyRecord>[0]
+
+    const item = fromAmplifyRecord(record)
+
+    expect(item.firearm?.finish).toBe("Matte Black")
+  })
+
+  it("maps optional firearm finish into Amplify condition on create", () => {
+    const input = toAmplifyCreateInput(makeInventoryItem())
+
+    expect(input.condition).toBe("Matte Black")
+  })
+
+  it("preserves omitted firearm finish as undefined on update", () => {
+    const input = toAmplifyUpdateInput(
+      makeInventoryItem({
+        firearm: {
+          requiresFflTransfer: true,
+        },
+      }),
+    )
+
+    expect(input.condition).toBeUndefined()
+  })
+})

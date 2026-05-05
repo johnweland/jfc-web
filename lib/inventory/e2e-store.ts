@@ -3,9 +3,10 @@ import { dirname } from "node:path"
 import { tmpdir } from "node:os"
 
 import type { DuplicateInventoryBehavior } from "@/lib/inventory/csv/types"
-import type { InventoryItem } from "@/lib/types/inventory"
+import type { InventoryItem, InventoryUnit } from "@/lib/types/inventory"
 
 const E2E_INVENTORY_STORE_PATH = `${tmpdir()}/jfc-e2e-inventory.json`
+const E2E_INVENTORY_UNIT_STORE_PATH = `${tmpdir()}/jfc-e2e-inventory-units.json`
 
 function cloneItem(item: InventoryItem): InventoryItem {
   return JSON.parse(JSON.stringify(item)) as InventoryItem
@@ -90,4 +91,55 @@ export function importE2eInventoryItems(
     skipped,
     failed: [] as Array<{ rowNumber: number; reason: string }>,
   }
+}
+
+// ---------------------------------------------------------------------------
+// E2E InventoryUnit store
+// ---------------------------------------------------------------------------
+
+function cloneUnit(unit: InventoryUnit): InventoryUnit {
+  return JSON.parse(JSON.stringify(unit)) as InventoryUnit
+}
+
+function readUnitStore(): InventoryUnit[] {
+  try {
+    const raw = readFileSync(E2E_INVENTORY_UNIT_STORE_PATH, "utf8")
+    const parsed = JSON.parse(raw) as InventoryUnit[]
+    return parsed.map(cloneUnit)
+  } catch {
+    return []
+  }
+}
+
+function writeUnitStore(units: InventoryUnit[]) {
+  mkdirSync(dirname(E2E_INVENTORY_UNIT_STORE_PATH), { recursive: true })
+  writeFileSync(E2E_INVENTORY_UNIT_STORE_PATH, JSON.stringify(units.map(cloneUnit)), "utf8")
+}
+
+export function listE2eInventoryUnits() {
+  return readUnitStore()
+}
+
+export function resetE2eInventoryUnits() {
+  writeUnitStore([])
+}
+
+export function setE2eInventoryUnits(units: InventoryUnit[]) {
+  writeUnitStore(units)
+}
+
+export function upsertE2eInventoryUnit(unit: InventoryUnit) {
+  const store = readUnitStore()
+  const idx = store.findIndex((u) => u.id === unit.id)
+  if (idx >= 0) {
+    store[idx] = cloneUnit({ ...store[idx], ...unit })
+  } else {
+    store.push(cloneUnit(unit))
+  }
+  writeUnitStore(store)
+}
+
+export function deleteE2eInventoryUnit(id: string) {
+  const store = readUnitStore()
+  writeUnitStore(store.filter((u) => u.id !== id))
 }

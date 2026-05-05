@@ -1,6 +1,5 @@
 import "server-only"
 
-import { cache } from "react"
 import {
   getAllProducts,
   getFeaturedProducts,
@@ -271,7 +270,7 @@ async function toProduct(item: InventoryItem): Promise<Product | null> {
   }
 }
 
-export const getLiveCatalog = cache(async (): Promise<Product[]> => {
+export async function getLiveCatalog(): Promise<Product[]> {
   if (process.env.E2E_TEST_MODE !== "1" && !isAmplifyDataConfigured) {
     return getAllProducts()
   }
@@ -279,7 +278,7 @@ export const getLiveCatalog = cache(async (): Promise<Product[]> => {
   const items = await listPublicInventory()
   const products = await Promise.all(items.map(toProduct))
   return products.filter((product): product is Product => Boolean(product))
-})
+}
 
 export async function getLiveProductsByCategory<C extends ProductCategory>(
   category: C,
