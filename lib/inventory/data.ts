@@ -22,6 +22,7 @@ const LEGACY_INVENTORY_SELECTION = [
   "manufacturer",
   "brand",
   "model",
+  "condition",
   "status",
   "isSerialized",
   "quantity",
@@ -54,6 +55,8 @@ const TRACKED_INVENTORY_SELECTION = [
   "sourceId",
   "importBatchId",
   "sourceSystem",
+  "isOneOff",
+  "sourceType",
 ] as const
 
 const INVENTORY_LIST_LIMIT = 1000
@@ -91,7 +94,9 @@ function hasTrackingSchemaReadError(errors: readonly { message: string }[] | und
         error.message.includes("location") ||
         error.message.includes("sourceId") ||
         error.message.includes("importBatchId") ||
-        error.message.includes("sourceSystem"),
+        error.message.includes("sourceSystem") ||
+        error.message.includes("isOneOff") ||
+        error.message.includes("sourceType"),
     ),
   )
 }

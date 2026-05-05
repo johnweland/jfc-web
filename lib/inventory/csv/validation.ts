@@ -216,6 +216,45 @@ export function buildNotes(item: InventoryItem) {
     .join(" | ")
 }
 
+/**
+ * Annotates rows whose serial number already exists as an InventoryUnit. Used by the
+ * FFLSafe importer to keep re-imports idempotent (one row → one unit, not duplicates).
+ */
+export function annotateDuplicateUnits(
+  rows: ParsedInventoryRow[],
+  existingUnits: { id: string; serialNumber: string }[],
+) {
+  const unitsBySerial = new Map<string, { id: string; serialNumber: string }>()
+  for (const unit of existingUnits) {
+    const key = unit.serialNumber.trim().toLowerCase()
+    if (key && !unitsBySerial.has(key)) {
+      unitsBySerial.set(key, unit)
+    }
+  }
+
+  const seen = new Map<string, number>()
+  for (const row of rows) {
+    const serial = row.unit?.serialNumber?.trim()
+    if (!serial) continue
+    const key = serial.toLowerCase()
+
+    const seenCount = seen.get(key) ?? 0
+    seen.set(key, seenCount + 1)
+    if (seenCount > 0) {
+      row.warnings.push(`Duplicate serial number "${serial}" appears multiple times in this CSV.`)
+    }
+
+    const existing = unitsBySerial.get(key)
+    if (existing) {
+      row.duplicateSerialInInventory = serial
+      row.matchedInventoryUnitId = existing.id
+      row.warnings.push(`Serial "${serial}" already exists as a unit in inventory.`)
+    }
+  }
+
+  return rows
+}
+
 export function annotateDuplicateSkus(
   rows: ParsedInventoryRow[],
   existingItems: InventoryItem[],

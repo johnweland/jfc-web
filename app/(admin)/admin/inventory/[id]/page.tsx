@@ -2,6 +2,7 @@ import { notFound } from "next/navigation"
 
 import { InventoryForm } from "@/components/inventory/inventory-form"
 import { getInventoryItem } from "@/lib/inventory/data"
+import { listInventoryUnits } from "@/lib/inventory/units/data"
 
 export const dynamic = "force-dynamic"
 
@@ -14,6 +15,11 @@ export default async function EditInventoryPage({
   const item = await getInventoryItem(id)
 
   if (!item) notFound()
+
+  // Pre-fetch units for serialized FIREARMs so the form can hydrate without a client-side round-trip.
+  const units = item.itemType === "FIREARM" && item.isSerialized
+    ? await listInventoryUnits(item.id)
+    : []
 
   return (
     <div className="flex flex-col gap-6 max-w-3xl">
@@ -33,7 +39,7 @@ export default async function EditInventoryPage({
         <p className="text-sm text-muted-foreground mt-1">{item.name}</p>
       </div>
 
-      <InventoryForm initialData={item} />
+      <InventoryForm initialData={item} initialUnits={units} />
     </div>
   )
 }

@@ -44,8 +44,11 @@ type Action =
 // ─── Reducer ─────────────────────────────────────────────────────────────────
 
 function clampQuantity(quantity: number, maxQuantity?: number) {
-  if (maxQuantity == null || maxQuantity < 1) {
+  if (maxQuantity == null) {
     return Math.max(1, quantity)
+  }
+  if (maxQuantity < 1) {
+    return 0
   }
 
   return Math.max(1, Math.min(quantity, maxQuantity))
@@ -55,6 +58,11 @@ function cartReducer(state: CartState, action: Action): CartState {
   switch (action.type) {
     case "ADD": {
       const { quantity = 1, ...item } = action.payload;
+      // Block adds when availability is explicitly 0 — covers serialized items
+      // with no AVAILABLE units (derived) and non-serialized items at qty 0.
+      if (typeof item.maxQuantity === "number" && item.maxQuantity < 1) {
+        return state
+      }
       const existing = state.items.find((i) => i.slug === item.slug);
       if (existing) {
         const nextQuantity = clampQuantity(

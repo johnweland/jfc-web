@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 
 import type {
+  AcquisitionSourceType,
   InventoryApparelVariant,
   InventoryItem,
   InventoryImage,
@@ -31,8 +32,18 @@ import type {
   InventoryStatus,
   InventorySource,
   InventoryTaxMode,
+  InventoryUnit,
 } from "@/lib/types/inventory";
 import { ImageUploader } from "./image-uploader";
+import { InventoryUnitsSection } from "./inventory-units-section";
+
+const SOURCE_TYPES: AcquisitionSourceType[] = [
+  "PURCHASED",
+  "CONSIGNMENT",
+  "TRANSFER",
+  "MANUAL",
+  "IMPORTED",
+];
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -126,9 +137,16 @@ const client = generateClient<Schema>();
 
 export function InventoryForm({
   initialData,
+  initialUnits,
 }: {
   initialData?: InventoryItem;
+  /**
+   * Units pre-fetched server-side. Used to derive quantity for serialized items
+   * and to seed the InventoryUnitsSection without a client-side round-trip.
+   */
+  initialUnits?: InventoryUnit[];
 }) {
+  const unitCount = initialUnits?.length ?? 0;
   const router = useRouter();
   const [itemId] = useState(() => initialData?.id ?? crypto.randomUUID());
   const [saving, setSaving] = useState(false);
@@ -165,6 +183,17 @@ export function InventoryForm({
   // Stock & Status
   const [quantity, setQuantity] = useState(
     initialData?.quantity?.toString() ?? "0",
+  );
+  // Serialized tracking — defaults true for FIREARM
+  const [isSerialized, setIsSerialized] = useState<boolean>(
+    initialData?.isSerialized ??
+      (initialData?.itemType ?? "PART") === "FIREARM",
+  );
+  const [isOneOff, setIsOneOff] = useState<boolean>(
+    initialData?.isOneOff ?? false,
+  );
+  const [sourceType, setSourceType] = useState<AcquisitionSourceType>(
+    initialData?.sourceType ?? "PURCHASED",
   );
   const [status, setStatus] = useState<InventoryStatus>(
     initialData?.status ?? "DRAFT",
@@ -301,11 +330,19 @@ export function InventoryForm({
         taxMode === "CUSTOM" && customTaxRate
           ? parseFloat(customTaxRate)
           : undefined,
-      quantity: itemType === "APPAREL" ? apparelQuantity : parseInt(quantity) || 0,
+      quantity:
+        itemType === "APPAREL"
+          ? apparelQuantity
+          : isSerialized
+          ? unitCount ?? 0
+          : parseInt(quantity) || 0,
       location: location || undefined,
       sourceSystem,
       sourceId: initialData?.sourceId,
       importBatchId: initialData?.importBatchId,
+      isSerialized: itemType === "FIREARM" ? isSerialized : false,
+      isOneOff: itemType === "FIREARM" ? isOneOff : false,
+      sourceType,
       ...(itemType === "FIREARM" && {
         firearm: {
           serialNumber: serialNumber || undefined,
@@ -579,17 +616,21 @@ export function InventoryForm({
               type="number"
               min="0"
               step="1"
-              value={displayQuantity}
+              value={isSerialized ? (unitCount ?? 0).toString() : displayQuantity}
               onChange={(e) => setQuantity(e.target.value)}
               required
-              disabled={apparelTotalQuantity !== null}
+              disabled={apparelTotalQuantity !== null || isSerialized}
               className="h-9 font-mono"
             />
-            {apparelTotalQuantity !== null && (
+            {isSerialized ? (
+              <p className="text-xs text-muted-foreground">
+                Derived from serialized units below.
+              </p>
+            ) : apparelTotalQuantity !== null ? (
               <p className="text-xs text-muted-foreground">
                 Auto-calculated from apparel variants below.
               </p>
-            )}
+            ) : null}
           </Field>
 
           <Field>
@@ -631,11 +672,67 @@ export function InventoryForm({
               className="h-9 font-mono"
             />
           </Field>
+
+          <Field>
+            <FieldLabel htmlFor="sourceType">Acquisition Source</FieldLabel>
+            <Select
+              value={sourceType}
+              onValueChange={(v) => setSourceType(v as AcquisitionSourceType)}
+            >
+              <SelectTrigger id="sourceType" className="h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SOURCE_TYPES.map((s) => (
+                  <SelectItem key={s} value={s} className="text-xs">
+                    {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+
+          {itemType === "FIREARM" && (
+            <div className="sm:col-span-2 flex flex-wrap items-center gap-6 pt-2 border-t border-border/40">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <Checkbox
+                  id="isSerialized"
+                  checked={isSerialized}
+                  onCheckedChange={(checked) => {
+                    setIsSerialized(checked === true)
+                    if (checked) setIsOneOff(false)
+                  }}
+                />
+                <span
+                  className="text-[10px] font-semibold uppercase text-muted-foreground"
+                  style={{ letterSpacing: "0.12em" }}
+                >
+                  Track per-unit serial numbers
+                </span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <Checkbox
+                  id="isOneOff"
+                  checked={isOneOff}
+                  onCheckedChange={(checked) => {
+                    setIsOneOff(checked === true)
+                    if (checked) setIsSerialized(false)
+                  }}
+                />
+                <span
+                  className="text-[10px] font-semibold uppercase text-muted-foreground"
+                  style={{ letterSpacing: "0.12em" }}
+                >
+                  One-off / consignment
+                </span>
+              </label>
+            </div>
+          )}
         </div>
       </SectionCard>
 
       {/* Section 5a: Part Details (conditional) */}
-      {(itemType === "PART" || itemType === "ACCESSORY" || itemType === "OTHER" || itemType === "SERVICES" || itemType === "AMMUNITION") && (
+      {(itemType === "PART" || itemType === "ACCESSORY" || itemType === "OTHER") && (
         <SectionCard title="Part Details">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field>
@@ -677,15 +774,17 @@ export function InventoryForm({
       {itemType === "FIREARM" && (
         <SectionCard title="Firearm Details">
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field>
-              <FieldLabel htmlFor="serialNumber">Serial Number</FieldLabel>
-              <Input
-                id="serialNumber"
-                value={serialNumber}
-                onChange={(e) => setSerialNumber(e.target.value)}
-                className="h-9 font-mono"
-              />
-            </Field>
+            {!isSerialized && (
+              <Field>
+                <FieldLabel htmlFor="serialNumber">Serial Number</FieldLabel>
+                <Input
+                  id="serialNumber"
+                  value={serialNumber}
+                  onChange={(e) => setSerialNumber(e.target.value)}
+                  className="h-9 font-mono"
+                />
+              </Field>
+            )}
 
             <Field>
               <FieldLabel htmlFor="firearmType">Firearm Type</FieldLabel>
@@ -793,6 +892,15 @@ export function InventoryForm({
             </div>
           </div>
         </SectionCard>
+      )}
+
+      {/* Serialized Units — only for FIREARMs with per-unit tracking enabled */}
+      {itemType === "FIREARM" && isSerialized && initialData?.id && (
+        <InventoryUnitsSection
+          inventoryItemId={initialData.id}
+          isOneOff={isOneOff}
+          initialUnits={initialUnits ?? []}
+        />
       )}
 
       {itemType === "APPAREL" && (

@@ -51,6 +51,23 @@ const schema = a.schema({
     'COMPLETED',
     'CANCELLED',
   ]),
+  InventoryUnitStatus: a.enum([
+    'AVAILABLE',
+    'RESERVED',
+    'SOLD',
+    'TRANSFERRED',
+    'CONSIGNED',
+    'RETURNED',
+    'LOST_DAMAGED',
+    'REMOVED',
+  ]),
+  AcquisitionSourceType: a.enum([
+    'PURCHASED',
+    'CONSIGNMENT',
+    'TRANSFER',
+    'MANUAL',
+    'IMPORTED',
+  ]),
 
   PostalAddress: a.customType({
     recipientName: a.string(),
@@ -75,6 +92,7 @@ const schema = a.schema({
 
   OrderItemSnapshot: a.customType({
     inventoryItemId: a.id(),
+    inventoryUnitId: a.id(),
     sku: a.string(),
     internalSku: a.string(),
     upc: a.string(),
@@ -271,6 +289,17 @@ const schema = a.schema({
           allow.authenticated().to(['read']),
           allow.groups(['ADMINS', 'STAFF']),
         ]),
+      isOneOff: a
+        .boolean()
+        .default(false)
+        .authorization((allow) => [
+          allow.publicApiKey().to(['read']),
+          allow.authenticated().to(['read']),
+          allow.groups(['ADMINS', 'STAFF']),
+        ]),
+      sourceType: a
+        .ref('AcquisitionSourceType')
+        .authorization((allow) => [allow.groups(['ADMINS', 'STAFF'])]),
       quantity: a
         .integer()
         .required()
@@ -384,6 +413,37 @@ const schema = a.schema({
       allow.authenticated().to(['read']),
       allow.groups(['ADMINS', 'STAFF']),
     ]),
+
+  // One physical, serialized item (firearm, lower receiver, suppressor, NFA, consignment).
+  // Multiple units belong to one InventoryItem (the SKU). Available quantity for a
+  // serialized InventoryItem is derived from a count of units with status === AVAILABLE.
+  InventoryUnit: a
+    .model({
+      inventoryItemId: a.id().required(),
+      serialNumber: a.string().required(),
+      status: a.ref('InventoryUnitStatus').required(),
+      location: a.string(),
+      cost: a.float(),
+      acquisitionDate: a.date(),
+      acquisitionSourceName: a.string(),
+      acquisitionSourceFfl: a.string(),
+      sourceType: a.ref('AcquisitionSourceType').required(),
+      consignorName: a.string(),
+      consignorContact: a.string(),
+      consignmentTerms: a.string(),
+      rocpayExportedAt: a.datetime(),
+      fflSafeExportedAt: a.datetime(),
+      importBatchId: a.string(),
+      sourceSystem: a.string(),
+      sourceId: a.string(),
+      notes: a.string(),
+    })
+    .secondaryIndexes((index) => [
+      index('inventoryItemId').queryField('inventoryUnitsByInventoryItemId'),
+      index('serialNumber').queryField('inventoryUnitsBySerialNumber'),
+      index('status').queryField('inventoryUnitsByStatus'),
+    ])
+    .authorization((allow) => [allow.groups(['ADMINS', 'STAFF'])]),
 
   Order: a
     .model({
