@@ -1,4 +1,5 @@
-import { ShieldCheck } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { AdminSidebar } from "./admin-sidebar";
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
@@ -30,6 +31,14 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             >
               JACKSON FIREARM CO — ADMIN
             </p>
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-[10px] font-semibold uppercase text-muted-foreground transition-colors hover:bg-surface-container-high hover:text-foreground"
+              style={{ letterSpacing: "0.16em" }}
+            >
+              <ArrowLeft className="size-3.5 shrink-0" />
+              Main site
+            </Link>
           </div>
         </header>
         <main className="flex-1 px-6 lg:px-12 py-10">{children}</main>

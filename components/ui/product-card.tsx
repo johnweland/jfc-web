@@ -188,12 +188,11 @@ export function ProductCard({ product, className }: ProductCardProps) {
           <Button
             asChild
             size="sm"
-            disabled={isOutOfStock}
             onClick={handleCta}
             className="gradient-primary text-primary-foreground text-[10px] font-bold uppercase shrink-0 rounded-none border-0 hover:opacity-90"
             style={{ letterSpacing: "0.08em" }}
           >
-            <Link href={href}>{isOutOfStock ? "NOTIFY ME" : getCtaLabel(product)}</Link>
+            <Link href={href}>{isOutOfStock ? "VIEW DETAILS" : getCtaLabel(product)}</Link>
           </Button>
         </div>
       </div>

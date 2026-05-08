@@ -226,6 +226,19 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
           return;
         }
 
+        const missingItems = items.filter((item) => !(item.slug in imageUrls));
+        if (missingItems.length > 0) {
+          for (const item of missingItems) {
+            dispatch({ type: "REMOVE", slug: item.slug });
+
+            if (userId && item.amplifyId) {
+              void client.models.CustomerFavorite.delete({
+                id: item.amplifyId,
+              }).catch(() => {});
+            }
+          }
+        }
+
         const hasChanges = items.some((item) => {
           if (!(item.slug in imageUrls)) {
             return false;
@@ -253,7 +266,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     return () => {
       controller.abort();
     };
-  }, [items]);
+  }, [items, userId]);
 
   const toggle = useCallback(
     async (item: FavoriteItem) => {

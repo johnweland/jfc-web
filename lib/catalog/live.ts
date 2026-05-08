@@ -65,6 +65,10 @@ function toAvailabilityStatus(item: InventoryItem): AvailabilityStatus | null {
     return null
   }
 
+  if (item.itemType === "FIREARM" && item.isOneOff && item.quantity <= 0) {
+    return null
+  }
+
   if (item.quantity <= 0) {
     return "backordered"
   }

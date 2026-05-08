@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { startTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   createColumnHelper,
@@ -11,6 +11,7 @@ import {
   useReactTable,
   type Column,
   type ColumnFiltersState,
+  type RowData,
   type SortingState,
 } from "@tanstack/react-table";
 import {
@@ -20,6 +21,7 @@ import {
   MoreHorizontal,
   Pencil,
   Search,
+  Trash2,
 } from "lucide-react";
 
 import {
@@ -47,9 +49,20 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { asPercent } from "@/lib/tax/shared";
+import {
+  archiveInventoryItemAction,
+  deleteInventoryItemAction,
+} from "./inventory-item-actions";
 
 import type { InventoryItem } from "@/lib/types/inventory";
 import { InventoryStatusBadge, InventorySourceBadge } from "./inventory-badges";
+
+declare module "@tanstack/react-table" {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface TableMeta<TData extends RowData> {
+    onInventoryChanged?: () => Promise<void>;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Sub-components
@@ -79,8 +92,53 @@ function SortableHeader({
   );
 }
 
-function InventoryRowActions({ item }: { item: InventoryItem }) {
+function InventoryRowActions({
+  item,
+  onInventoryChanged,
+}: {
+  item: InventoryItem;
+  onInventoryChanged: () => Promise<void>;
+}) {
   const router = useRouter();
+
+  function handleArchive() {
+    const confirmed = window.confirm(`Archive "${item.name}"?`)
+    if (!confirmed) {
+      return
+    }
+
+    startTransition(async () => {
+      try {
+        await archiveInventoryItemAction(item.id)
+        await onInventoryChanged()
+      } catch (error) {
+        window.alert(
+          error instanceof Error ? error.message : "Unable to archive inventory item.",
+        )
+      }
+    })
+  }
+
+  function handleDelete() {
+    const confirmed = window.confirm(
+      `Delete "${item.name}" permanently? This cannot be undone.`,
+    )
+    if (!confirmed) {
+      return
+    }
+
+    startTransition(async () => {
+      try {
+        await deleteInventoryItemAction(item.id)
+        await onInventoryChanged()
+      } catch (error) {
+        window.alert(
+          error instanceof Error ? error.message : "Unable to delete inventory item.",
+        )
+      }
+    })
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -102,9 +160,18 @@ function InventoryRowActions({ item }: { item: InventoryItem }) {
         <DropdownMenuItem
           className="text-xs uppercase cursor-pointer text-muted-foreground"
           style={{ letterSpacing: "0.08em" }}
-          onClick={() => console.log("[InventoryTable] archive stub", item.id)}
+          onClick={handleArchive}
         >
           Archive
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          variant="destructive"
+          className="text-xs uppercase cursor-pointer"
+          style={{ letterSpacing: "0.08em" }}
+          onClick={handleDelete}
+        >
+          <Trash2 className="size-3.5" />
+          Delete
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -210,7 +277,12 @@ const columns = [
   columnHelper.display({
     id: "actions",
     header: "",
-    cell: ({ row }) => <InventoryRowActions item={row.original} />,
+    cell: ({ row, table }) => (
+      <InventoryRowActions
+        item={row.original}
+        onInventoryChanged={table.options.meta?.onInventoryChanged ?? (async () => {})}
+      />
+    ),
   }),
 ];
 
@@ -227,7 +299,13 @@ const ALL_STATUSES = [
   "ARCHIVED",
 ] as const;
 
-export function InventoryTable({ data }: { data: InventoryItem[] }) {
+export function InventoryTable({
+  data,
+  onInventoryChanged,
+}: {
+  data: InventoryItem[];
+  onInventoryChanged: () => Promise<void>;
+}) {
   "use no memo";
 
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -238,6 +316,9 @@ export function InventoryTable({ data }: { data: InventoryItem[] }) {
   const table = useReactTable({
     data,
     columns,
+    meta: {
+      onInventoryChanged,
+    },
     state: { sorting, columnFilters, globalFilter },
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,

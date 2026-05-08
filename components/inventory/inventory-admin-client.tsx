@@ -178,7 +178,7 @@ export function InventoryAdminClient({
         </div>
       </div>
 
-      <InventoryTable data={items} />
+      <InventoryTable data={items} onInventoryChanged={refreshItems} />
     </div>
   )
 }

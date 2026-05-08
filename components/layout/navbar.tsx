@@ -3,8 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, Search, ShoppingCart, User } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Menu, Search, ShieldCheck, ShoppingCart, User } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Sheet,
   SheetClose,
@@ -24,7 +24,11 @@ const navLinks = [
   { label: "FFL INFO", href: "/ffl-info" },
 ];
 
-export function Navbar() {
+interface NavbarProps {
+  canAccessAdmin?: boolean;
+}
+
+export function Navbar({ canAccessAdmin = false }: NavbarProps) {
   const pathname = usePathname();
   const { itemCount, openCart } = useCart();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -80,14 +84,16 @@ export function Navbar() {
           <div className="flex items-center gap-1">
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
+                <button
                   aria-label="Open navigation menu"
-                  className="md:hidden"
+                  type="button"
+                  className={cn(
+                    buttonVariants({ variant: "ghost", size: "icon" }),
+                    "md:hidden",
+                  )}
                 >
                   <Menu className="size-4 text-muted-foreground" />
-                </Button>
+                </button>
               </SheetTrigger>
               <SheetContent side="left" className="w-[86vw] max-w-sm border-r border-border/40 px-0">
                 <SheetHeader className="border-b border-border/30 px-6 py-5 text-left">
@@ -125,26 +131,48 @@ export function Navbar() {
                   </nav>
 
                   <div className="mt-auto border-t border-border/30 px-3 py-4">
+                    {canAccessAdmin && (
+                      <SheetClose asChild>
+                        <Link
+                          href="/admin"
+                          className="mb-1 flex min-h-12 items-center gap-3 rounded-lg px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-surface-container-high hover:text-foreground"
+                        >
+                          <ShieldCheck className="size-4 text-muted-foreground" />
+                          <span
+                            className="text-[0.7rem] font-semibold uppercase"
+                            style={{ letterSpacing: "0.16em" }}
+                          >
+                            ADMIN PANEL
+                          </span>
+                        </Link>
+                      </SheetClose>
+                    )}
                     <SheetClose asChild>
                       <Link
                         href="/account"
                         className="flex min-h-12 items-center gap-3 rounded-lg px-3 text-sm font-medium text-foreground transition-colors hover:bg-surface-container-high"
                       >
                         <User className="size-4 text-muted-foreground" />
-                        <span>My account</span>
+                        <span
+                          className="text-[0.7rem] font-semibold uppercase"
+                          style={{ letterSpacing: "0.16em" }}
+                        >
+                          MY ACCOUNT
+                        </span>
                       </Link>
                     </SheetClose>
                   </div>
                 </div>
               </SheetContent>
             </Sheet>
-            <Button variant="ghost" size="icon" aria-label="Search">
+            <Button variant="ghost" size="icon" aria-label="Search" title="Search">
               <Search className="size-4 text-muted-foreground" />
             </Button>
             <Button
               variant="ghost"
               size="icon"
               aria-label={`Cart — ${itemCount} item${itemCount !== 1 ? "s" : ""}`}
+              title="Cart"
               className="relative"
               onClick={openCart}
             >
@@ -155,11 +183,35 @@ export function Navbar() {
                 </span>
               )}
             </Button>
-            <Button variant="ghost" size="icon" aria-label="Account" asChild>
-              <Link href="/account">
-                <User className="size-4 text-muted-foreground" />
-              </Link>
-            </Button>
+            <Link
+              href="/account"
+              aria-label="Account"
+              title="My account"
+              className={buttonVariants({ variant: "ghost", size: "icon" })}
+            >
+              <User className="size-4 text-muted-foreground" />
+            </Link>
+            {canAccessAdmin && (
+              <>
+                <span
+                  aria-hidden="true"
+                  className="hidden px-1 text-sm text-muted-foreground/50 md:inline"
+                >
+                  |
+                </span>
+                <Link
+                  href="/admin"
+                  aria-label="Admin panel"
+                  title="Admin panel"
+                  className={cn(
+                    buttonVariants({ variant: "ghost", size: "icon" }),
+                    "hidden md:inline-flex",
+                  )}
+                >
+                  <ShieldCheck className="size-4 text-muted-foreground" />
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </div>

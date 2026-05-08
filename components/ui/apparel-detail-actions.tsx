@@ -207,7 +207,7 @@ export function ApparelDetailActions({ item }: ApparelDetailActionsProps) {
         className="gradient-primary text-primary-foreground font-bold uppercase rounded-none border-0 w-full"
         style={{ letterSpacing: "0.1em" }}
       >
-        {isBackordered ? "NOTIFY ME WHEN AVAILABLE" : "ADD TO CART"}
+        {isBackordered ? "CURRENTLY UNAVAILABLE" : "ADD TO CART"}
         <ArrowRight className="ml-2 size-4" />
       </Button>
       <FavoriteButton

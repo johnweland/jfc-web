@@ -1,4 +1,5 @@
-import { ShieldCheck } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { AuthPanel } from "@/components/auth/auth-panel";
 
 export default async function SignInPage({
@@ -14,6 +15,14 @@ export default async function SignInPage({
     <main className="min-h-screen bg-background px-6 py-16">
       <div className="mx-auto flex max-w-5xl flex-col gap-10 lg:flex-row lg:items-center">
         <section className="flex max-w-xl flex-col gap-4">
+          <Link
+            href="/"
+            className="inline-flex w-fit items-center gap-2 rounded-lg px-3 py-2 text-[0.7rem] font-semibold uppercase text-muted-foreground transition-colors hover:bg-surface-container-high hover:text-foreground"
+            style={{ letterSpacing: "0.16em" }}
+          >
+            <ArrowLeft className="size-3.5 shrink-0" />
+            Return to site
+          </Link>
           <div className="flex items-center gap-2 text-primary">
             <ShieldCheck data-icon="inline-start" />
             <span className="text-sm font-medium uppercase tracking-[0.18em]">

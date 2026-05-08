@@ -21,7 +21,7 @@ export function AddToCartButton({
     ? "INITIATE FFL TRANSFER"
     : "ADD TO CART";
 
-  const buttonLabel = backordered ? "NOTIFY ME WHEN AVAILABLE" : (label ?? defaultLabel);
+  const buttonLabel = backordered ? "CURRENTLY UNAVAILABLE" : (label ?? defaultLabel);
   const Icon = product.category === "firearm" ? ShieldCheck : ArrowRight;
 
   return (

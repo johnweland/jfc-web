@@ -1,10 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { Mail, SlidersHorizontal } from "lucide-react"
+import { SlidersHorizontal } from "lucide-react"
 import { ProductCard } from "@/components/ui/product-card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { DEFAULT_APPAREL_SIZE, getApparelSizeOptions } from "@/lib/data/apparel-sizes"
 import type { Apparel } from "@/lib/data/types"
@@ -264,20 +262,6 @@ export function ApparelCatalog({ apparel }: { apparel: Apparel[] }) {
                 </p>
               </div>
 
-              <div className="w-full max-w-sm">
-                <label
-                  className="font-display text-[10px] font-semibold uppercase text-muted-foreground/60 block mb-2"
-                  style={{ letterSpacing: "0.18em" }}
-                >
-                  Notify Me
-                </label>
-                <div className="flex gap-2">
-                  <Input placeholder="Email for restocks" className="rounded-none" />
-                  <Button className="gradient-primary text-primary-foreground rounded-none px-4">
-                    <Mail className="size-4" />
-                  </Button>
-                </div>
-              </div>
             </div>
 
             {filtered.length === 0 ? (
