@@ -2,7 +2,7 @@
   "name": "Jackson Firearm Co.",
   "short_name": "JFC",
   "description": "GUNS",
-  "start_url": "/",
+  "start_url": ".",
   "icons": [
     {
       "src": "/web-app-manifest-144x144.png",
