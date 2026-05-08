@@ -44,51 +44,94 @@ export default async function HomePage() {
       {/* ── Hero ──────────────────────────────────────────────── */}
       <section className="topo-bg relative min-h-[80vh] flex items-center bg-surface">
         <div className="mx-auto max-w-screen-2xl px-6 lg:px-12 py-24 w-full">
-          <div className="max-w-3xl">
-            <p
-              className="font-display text-xs font-semibold uppercase text-primary mb-6"
-              style={{ letterSpacing: "0.18em" }}
-            >
-              Federal Firearms Licensee · Est. 2025
-            </p>
-            <h1
-              className="font-display font-bold text-foreground leading-none mb-8"
-              style={{
-                fontSize: "clamp(2.75rem, 6vw, 5rem)",
-                letterSpacing: "-0.03em",
-              }}
-            >
-              EQUIPPING
-              <br />
-              <span className="text-primary">THE MODERN</span>
-              <br />
-              OPERATOR
-            </h1>
-            <p className="text-base text-muted-foreground max-w-lg mb-12 leading-relaxed">
-              Premium firearms, mil-spec components, and tactical apparel.
-              Serving the serious shooter with the precision they demand.
-            </p>
-            <div className="flex flex-wrap gap-4">
-              <Button
-                asChild
-                size="lg"
-                className="gradient-primary text-primary-foreground font-bold uppercase rounded-none border-0 px-8"
-                style={{ letterSpacing: "0.1em" }}
+          <div className="grid items-center gap-14 lg:grid-cols-[minmax(0,1.1fr)_minmax(340px,0.9fr)] xl:gap-20">
+            <div className="max-w-3xl">
+              <p
+                className="font-display text-xs font-semibold uppercase text-primary mb-6"
+                style={{ letterSpacing: "0.18em" }}
               >
-                <Link href="/firearms">
-                  SHOP FIREARMS
-                  <ArrowRight className="ml-2 size-4" />
-                </Link>
-              </Button>
-              <Button
-                asChild
-                variant="outline"
-                size="lg"
-                className="rounded-none uppercase font-bold border-border/30 text-foreground hover:bg-surface-container"
-                style={{ letterSpacing: "0.1em" }}
+                Federal Firearms Licensee · Est. 2025
+              </p>
+              <h1
+                className="font-display font-bold text-foreground leading-none mb-8"
+                style={{
+                  fontSize: "clamp(2.75rem, 6vw, 5rem)",
+                  letterSpacing: "-0.03em",
+                }}
               >
-                <Link href="/ffl-info">FFL INFO</Link>
-              </Button>
+                EQUIPPING
+                <br />
+                <span className="text-primary">THE MODERN</span>
+                <br />
+                OPERATOR
+              </h1>
+              <p className="text-base text-muted-foreground max-w-lg mb-12 leading-relaxed">
+                Premium firearms, mil-spec components, and tactical apparel.
+                Serving the serious shooter with the precision they demand.
+              </p>
+              <div className="flex flex-wrap gap-4">
+                <Button
+                  asChild
+                  size="lg"
+                  className="gradient-primary text-primary-foreground font-bold uppercase rounded-none border-0 px-8"
+                  style={{ letterSpacing: "0.1em" }}
+                >
+                  <Link href="/firearms">
+                    SHOP FIREARMS
+                    <ArrowRight className="ml-2 size-4" />
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  variant="outline"
+                  size="lg"
+                  className="rounded-none uppercase font-bold border-border/30 text-foreground hover:bg-surface-container"
+                  style={{ letterSpacing: "0.1em" }}
+                >
+                  <Link href="/ffl-info">FFL INFO</Link>
+                </Button>
+              </div>
+            </div>
+
+            <div className="hidden lg:block">
+              <div className="relative aspect-square overflow-hidden bg-surface-container shadow-2xl">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(222,205,153,0.16),transparent_34%),linear-gradient(135deg,rgba(53,53,53,0.9),rgba(19,19,19,0.98))]" />
+                <div className="absolute inset-0 bg-[url('/topo2-texture.png')] bg-cover bg-center opacity-20 mix-blend-screen" />
+                <div className="absolute inset-x-8 top-8 h-px bg-primary/20" />
+                <div className="absolute inset-y-8 right-8 w-px bg-primary/20" />
+                <div className="absolute inset-x-8 bottom-8 h-px bg-primary/20" />
+                <div className="absolute inset-y-8 left-8 w-px bg-primary/20" />
+                <div className="absolute right-0 top-0 h-28 w-28 border-r border-t border-primary/25" />
+                <div className="absolute bottom-0 left-0 h-28 w-28 border-b border-l border-primary/25" />
+                <div className="relative z-10 flex h-full flex-col justify-between p-8 xl:p-10">
+                  <div className="flex items-center justify-between text-[10px] font-semibold uppercase text-primary/80">
+                    <span style={{ letterSpacing: "0.24em" }}>Landing Box</span>
+                    <span style={{ letterSpacing: "0.18em" }}>Image Pending</span>
+                  </div>
+                  <div className="max-w-xs">
+                    <p
+                      className="mb-3 font-display text-xs font-semibold uppercase text-primary"
+                      style={{ letterSpacing: "0.2em" }}
+                    >
+                      Visual Anchor
+                    </p>
+                    <p
+                      className="font-display text-3xl font-bold uppercase text-foreground"
+                      style={{ letterSpacing: "-0.02em" }}
+                    >
+                      Reserved for Hero Media
+                    </p>
+                    <p className="mt-4 max-w-sm text-sm leading-relaxed text-muted-foreground">
+                      Keep this structure in place so the homepage matches the
+                      Stitch layout until the final right-side image is ready.
+                    </p>
+                  </div>
+                  <div className="flex items-end justify-between">
+                    <div className="h-20 w-20 bg-primary/8" />
+                    <div className="h-24 w-24 bg-surface-container-high/80" />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
