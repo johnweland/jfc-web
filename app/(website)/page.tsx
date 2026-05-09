@@ -105,7 +105,7 @@ export default async function HomePage() {
                   sizes="(max-width: 1024px) 0vw, (max-width: 1280px) 40vw, 36vw"
                   className="object-cover object-center"
                 />
-                <div className="absolute inset-0 bg-[url('/topo2-texture.png')] bg-cover bg-center opacity-20 mix-blend-screen" />
+                <div className="absolute inset-0 bg-cover bg-center opacity-20 mix-blend-screen" />
                 <div className="absolute inset-0 bg-gradient-to-t from-surface/50 via-transparent to-transparent" />
                 <div className="absolute inset-x-8 top-8 h-px bg-primary/20" />
                 <div className="absolute inset-y-8 right-8 w-px bg-primary/20" />
