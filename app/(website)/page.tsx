@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Shield, Zap, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -96,39 +97,36 @@ export default async function HomePage() {
             <div className="hidden lg:block">
               <div className="relative aspect-square overflow-hidden bg-surface-container shadow-2xl">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(222,205,153,0.16),transparent_34%),linear-gradient(135deg,rgba(53,53,53,0.9),rgba(19,19,19,0.98))]" />
+                <Image
+                  src="/primary_hero.png"
+                  alt="Jackson Firearm Co. hero product image"
+                  fill
+                  priority
+                  sizes="(max-width: 1024px) 0vw, (max-width: 1280px) 40vw, 36vw"
+                  className="object-cover object-center"
+                />
                 <div className="absolute inset-0 bg-[url('/topo2-texture.png')] bg-cover bg-center opacity-20 mix-blend-screen" />
+                <div className="absolute inset-0 bg-gradient-to-t from-surface/50 via-transparent to-transparent" />
                 <div className="absolute inset-x-8 top-8 h-px bg-primary/20" />
                 <div className="absolute inset-y-8 right-8 w-px bg-primary/20" />
                 <div className="absolute inset-x-8 bottom-8 h-px bg-primary/20" />
                 <div className="absolute inset-y-8 left-8 w-px bg-primary/20" />
                 <div className="absolute right-0 top-0 h-28 w-28 border-r border-t border-primary/25" />
                 <div className="absolute bottom-0 left-0 h-28 w-28 border-b border-l border-primary/25" />
-                <div className="relative z-10 flex h-full flex-col justify-between p-8 xl:p-10">
-                  <div className="flex items-center justify-between text-[10px] font-semibold uppercase text-primary/80">
-                    <span style={{ letterSpacing: "0.24em" }}>Landing Box</span>
-                    <span style={{ letterSpacing: "0.18em" }}>Image Pending</span>
-                  </div>
-                  <div className="max-w-xs">
+                <div className="relative z-10 flex h-full items-end p-8 xl:p-10">
+                  <div className="max-w-xs bg-surface/72 px-5 py-4 backdrop-blur-sm">
                     <p
-                      className="mb-3 font-display text-xs font-semibold uppercase text-primary"
+                      className="mb-2 font-display text-xs font-semibold uppercase text-primary"
                       style={{ letterSpacing: "0.2em" }}
                     >
-                      Visual Anchor
+                      Field Ready
                     </p>
                     <p
-                      className="font-display text-3xl font-bold uppercase text-foreground"
+                      className="font-display text-2xl font-bold uppercase text-foreground"
                       style={{ letterSpacing: "-0.02em" }}
                     >
-                      Reserved for Hero Media
+                      Premium Gear For Serious Shooters
                     </p>
-                    <p className="mt-4 max-w-sm text-sm leading-relaxed text-muted-foreground">
-                      Keep this structure in place so the homepage matches the
-                      Stitch layout until the final right-side image is ready.
-                    </p>
-                  </div>
-                  <div className="flex items-end justify-between">
-                    <div className="h-20 w-20 bg-primary/8" />
-                    <div className="h-24 w-24 bg-surface-container-high/80" />
                   </div>
                 </div>
               </div>
