@@ -40,9 +40,9 @@ export default async function AccountLayout({
       {/* Two-column body */}
       <div className="bg-surface min-h-[60vh]">
         <div className="mx-auto max-w-screen-2xl px-6 lg:px-12">
-          <div className="flex gap-10 py-10 items-start">
+          <div className="flex flex-col items-stretch gap-6 py-10 lg:flex-row lg:items-start lg:gap-10">
             <AccountSidebar user={user} />
-            <main className="flex-1 min-w-0">{children}</main>
+            <main className="min-w-0 w-full flex-1">{children}</main>
           </div>
         </div>
       </div>

@@ -32,6 +32,7 @@ export function Navbar({ canAccessAdmin = false }: NavbarProps) {
   const pathname = usePathname();
   const { itemCount, openCart } = useCart();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const mobileActionButtonClass = "size-7 sm:size-8";
 
   const isActiveLink = (href: string) =>
     href === "/" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
@@ -39,17 +40,17 @@ export function Navbar({ canAccessAdmin = false }: NavbarProps) {
   return (
     <header className="sticky top-0 z-50 glass-nav">
       <div className="mx-auto max-w-screen-2xl px-6 lg:px-12">
-        <div className="flex h-16 items-center justify-between gap-8">
+        <div className="flex min-h-16 items-center justify-between gap-x-3 gap-y-2 py-3 sm:h-16 sm:flex-nowrap sm:gap-8 sm:py-0">
           {/* Logo */}
-          <Link href="/" className="flex flex-col leading-none shrink-0">
+          <Link href="/" className="min-w-0 flex-1 leading-none sm:max-w-none sm:flex-none">
             <span
-              className="font-display text-xl font-bold tracking-widest text-foreground uppercase"
+              className="block truncate font-display text-sm font-bold tracking-widest text-foreground uppercase sm:text-xl"
               style={{ letterSpacing: "0.12em" }}
             >
               JACKSON FIREARM CO.
             </span>
             <span
-              className="text-[0.6rem] font-medium uppercase text-muted-foreground"
+              className="hidden text-[0.6rem] font-medium uppercase text-muted-foreground min-[420px]:block"
               style={{ letterSpacing: "0.18em" }}
             >
               Est. 2025 &nbsp;|&nbsp; Premium Precision
@@ -81,7 +82,7 @@ export function Navbar({ canAccessAdmin = false }: NavbarProps) {
           </nav>
 
           {/* Action icons */}
-          <div className="flex items-center gap-1">
+          <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
                 <button
@@ -89,6 +90,7 @@ export function Navbar({ canAccessAdmin = false }: NavbarProps) {
                   type="button"
                   className={cn(
                     buttonVariants({ variant: "ghost", size: "icon" }),
+                    mobileActionButtonClass,
                     "md:hidden",
                   )}
                 >
@@ -165,7 +167,13 @@ export function Navbar({ canAccessAdmin = false }: NavbarProps) {
                 </div>
               </SheetContent>
             </Sheet>
-            <Button variant="ghost" size="icon" aria-label="Search" title="Search">
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Search"
+              title="Search"
+              className={mobileActionButtonClass}
+            >
               <Search className="size-4 text-muted-foreground" />
             </Button>
             <Button
@@ -173,7 +181,7 @@ export function Navbar({ canAccessAdmin = false }: NavbarProps) {
               size="icon"
               aria-label={`Cart — ${itemCount} item${itemCount !== 1 ? "s" : ""}`}
               title="Cart"
-              className="relative"
+              className={cn("relative", mobileActionButtonClass)}
               onClick={openCart}
             >
               <ShoppingCart className="size-4 text-muted-foreground" />
@@ -187,7 +195,10 @@ export function Navbar({ canAccessAdmin = false }: NavbarProps) {
               href="/account"
               aria-label="Account"
               title="My account"
-              className={buttonVariants({ variant: "ghost", size: "icon" })}
+              className={cn(
+                buttonVariants({ variant: "ghost", size: "icon" }),
+                mobileActionButtonClass,
+              )}
             >
               <User className="size-4 text-muted-foreground" />
             </Link>
@@ -205,7 +216,7 @@ export function Navbar({ canAccessAdmin = false }: NavbarProps) {
                   title="Admin panel"
                   className={cn(
                     buttonVariants({ variant: "ghost", size: "icon" }),
-                    "hidden md:inline-flex",
+                    mobileActionButtonClass,
                   )}
                 >
                   <ShieldCheck className="size-4 text-muted-foreground" />

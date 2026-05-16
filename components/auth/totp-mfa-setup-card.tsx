@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   Smartphone,
 } from "lucide-react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,6 +42,7 @@ export function TotpMfaSetupCard({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [mfaCode, setMfaCode] = useState("");
   const [provisioningUri, setProvisioningUri] = useState<string | null>(null);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
   const [sharedSecret, setSharedSecret] = useState<string | null>(null);
   const [isLoadingSecret, setIsLoadingSecret] = useState(true);
   const [isPending, startTransition] = useTransition();
@@ -51,15 +53,27 @@ export function TotpMfaSetupCard({
     async function loadSecret() {
       try {
         const setupDetails = await setUpTOTP();
+        const nextProvisioningUri = setupDetails
+          .getSetupUri("Jackson Firearm Co", email ?? undefined)
+          .toString();
+        const { toDataURL } = await import("qrcode");
+        const nextQrCodeDataUrl = await toDataURL(nextProvisioningUri, {
+          color: {
+            dark: "#e2e2e2",
+            light: "#131313",
+          },
+          errorCorrectionLevel: "M",
+          margin: 1,
+          width: 224,
+        });
 
         if (cancelled) {
           return;
         }
 
         setSharedSecret(setupDetails.sharedSecret);
-        setProvisioningUri(
-          setupDetails.getSetupUri("Jackson Firearm Co", email ?? undefined).toString()
-        );
+        setProvisioningUri(nextProvisioningUri);
+        setQrCodeDataUrl(nextQrCodeDataUrl);
       } catch (error) {
         if (!cancelled) {
           setErrorMessage(
@@ -128,6 +142,29 @@ export function TotpMfaSetupCard({
             <p className="text-sm text-muted-foreground">
               Use 1Password, Google Authenticator, Authy, or another TOTP app.
             </p>
+            {qrCodeDataUrl ? (
+              <div className="mt-4 flex flex-col items-start gap-3">
+                <Image
+                  alt="Authenticator app setup QR code"
+                  className="size-48 border border-border/60 bg-background p-2"
+                  height={192}
+                  src={qrCodeDataUrl}
+                  unoptimized
+                  width={192}
+                />
+                <Button asChild className="w-full sm:w-auto" variant="outline">
+                  <a href={provisioningUri ?? undefined}>
+                    <Smartphone data-icon="inline-start" />
+                    Open setup link
+                  </a>
+                </Button>
+              </div>
+            ) : isLoadingSecret ? (
+              <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+                <LoaderCircle className="animate-spin" data-icon="inline-start" />
+                Generating QR code...
+              </div>
+            ) : null}
             {provisioningUri ? (
               <div className="mt-4 flex flex-col gap-2">
                 <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
