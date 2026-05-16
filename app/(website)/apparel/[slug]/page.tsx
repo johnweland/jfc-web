@@ -10,13 +10,6 @@ import type { Apparel } from "@/lib/data/types";
 
 export const dynamic = "force-dynamic";
 
-function formatPrice(price: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(price);
-}
-
 interface Props {
   params: Promise<{ slug: string }>;
 }
@@ -76,18 +69,6 @@ export default async function ApparelDetailPage({ params }: Props) {
                   </h1>
                 </div>
                 <AvailabilityBadge status={item.status} className="mt-2 shrink-0" />
-              </div>
-
-              {/* Price */}
-              <div className="flex items-baseline gap-3">
-                <span className="font-display text-2xl font-bold text-foreground">
-                  {formatPrice(item.price)}
-                </span>
-                {item.originalPrice && (
-                  <span className="text-sm text-muted-foreground line-through">
-                    {formatPrice(item.originalPrice)}
-                  </span>
-                )}
               </div>
 
               <p className="text-sm text-muted-foreground leading-relaxed">

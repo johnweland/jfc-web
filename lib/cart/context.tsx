@@ -12,6 +12,7 @@ import { calculateTaxAmount } from "@/lib/tax/shared";
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface CartItem {
+  lineId: string;
   slug: string;
   name: string;
   sku: string;
@@ -35,13 +36,19 @@ interface CartState {
 
 type Action =
   | { type: "ADD"; payload: Omit<CartItem, "quantity"> & { quantity?: number } }
-  | { type: "REMOVE"; slug: string }
-  | { type: "SET_QTY"; slug: string; quantity: number }
+  | { type: "REMOVE"; lineId: string }
+  | { type: "SET_QTY"; lineId: string; quantity: number }
   | { type: "OPEN" }
   | { type: "CLOSE" }
   | { type: "CLEAR" };
 
 // ─── Reducer ─────────────────────────────────────────────────────────────────
+
+export function buildCartItemLineId(
+  item: Pick<CartItem, "slug" | "sku" | "size" | "color" | "category">,
+) {
+  return [item.category, item.slug, item.sku, item.size ?? "", item.color ?? ""].join("::")
+}
 
 function clampQuantity(quantity: number, maxQuantity?: number) {
   if (maxQuantity == null) {
@@ -63,7 +70,7 @@ function cartReducer(state: CartState, action: Action): CartState {
       if (typeof item.maxQuantity === "number" && item.maxQuantity < 1) {
         return state
       }
-      const existing = state.items.find((i) => i.slug === item.slug);
+      const existing = state.items.find((i) => i.lineId === item.lineId);
       if (existing) {
         const nextQuantity = clampQuantity(
           existing.quantity + quantity,
@@ -73,7 +80,7 @@ function cartReducer(state: CartState, action: Action): CartState {
           ...state,
           isOpen: true,
           items: state.items.map((i) =>
-            i.slug === item.slug
+            i.lineId === item.lineId
               ? {
                   ...i,
                   ...item,
@@ -96,19 +103,19 @@ function cartReducer(state: CartState, action: Action): CartState {
     case "REMOVE":
       return {
         ...state,
-        items: state.items.filter((i) => i.slug !== action.slug),
+        items: state.items.filter((i) => i.lineId !== action.lineId),
       };
     case "SET_QTY": {
       if (action.quantity < 1) {
         return {
           ...state,
-          items: state.items.filter((i) => i.slug !== action.slug),
+          items: state.items.filter((i) => i.lineId !== action.lineId),
         };
       }
       return {
         ...state,
         items: state.items.map((i) =>
-          i.slug === action.slug
+          i.lineId === action.lineId
             ? { ...i, quantity: clampQuantity(action.quantity, i.maxQuantity) }
             : i
         ),
@@ -135,8 +142,8 @@ interface CartContextValue {
   estimatedTax: number;
   total: number;
   addItem: (item: Omit<CartItem, "quantity"> & { quantity?: number }) => void;
-  removeItem: (slug: string) => void;
-  setQuantity: (slug: string, quantity: number) => void;
+  removeItem: (lineId: string) => void;
+  setQuantity: (lineId: string, quantity: number) => void;
   openCart: () => void;
   closeCart: () => void;
   clearCart: () => void;
@@ -155,12 +162,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
     []
   );
   const removeItem = useCallback(
-    (slug: string) => dispatch({ type: "REMOVE", slug }),
+    (lineId: string) => dispatch({ type: "REMOVE", lineId }),
     []
   );
   const setQuantity = useCallback(
-    (slug: string, quantity: number) =>
-      dispatch({ type: "SET_QTY", slug, quantity }),
+    (lineId: string, quantity: number) =>
+      dispatch({ type: "SET_QTY", lineId, quantity }),
     []
   );
   const openCart = useCallback(() => dispatch({ type: "OPEN" }), []);

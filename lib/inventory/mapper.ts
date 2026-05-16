@@ -59,6 +59,14 @@ function asApparelVariants(value: unknown): InventoryApparelVariant[] | undefine
   return undefined
 }
 
+function normalizeVariantPriceAdjustment(value: unknown): number | undefined {
+  if (typeof value !== "number" || !Number.isFinite(value) || value === 0) {
+    return undefined
+  }
+
+  return value
+}
+
 // ---------------------------------------------------------------------------
 // Amplify record → UI InventoryItem
 // ---------------------------------------------------------------------------
@@ -114,7 +122,10 @@ export function fromAmplifyRecord(r: AmplifyRecord): InventoryItem {
             material: r.material ?? undefined,
             size: r.size ?? undefined,
             color: r.color ?? undefined,
-            variants: apparelVariants,
+            variants: apparelVariants?.map((variant) => ({
+              ...variant,
+              priceAdjustment: normalizeVariantPriceAdjustment(variant.priceAdjustment),
+            })),
           }
         : undefined,
     images,
@@ -182,7 +193,12 @@ export function toAmplifyCreateInput(item: InventoryItem): AmplifyCreateInput {
         : item.apparel?.color,
     material: item.apparel?.material,
     apparelVariants: item.apparel?.variants
-      ? JSON.stringify(item.apparel.variants)
+      ? JSON.stringify(
+          item.apparel.variants.map((variant) => ({
+            ...variant,
+            priceAdjustment: normalizeVariantPriceAdjustment(variant.priceAdjustment),
+          }))
+        )
       : undefined,
     // Admin-only fields
     location: item.location,

@@ -62,4 +62,49 @@ describe("inventory mapper finish field", () => {
 
     expect(input.condition).toBeUndefined()
   })
+
+  it("round-trips apparel variant price adjustments", () => {
+    const inventoryItem = makeInventoryItem({
+      itemType: "APPAREL",
+      firearm: undefined,
+      price: 28,
+      apparel: {
+        apparelType: "Shirt",
+        material: "Cotton",
+        variants: [
+          {
+            id: "variant-xl",
+            size: "XL",
+            color: "Black",
+            sku: "TEE-XL-BLK",
+            quantity: 4,
+            priceAdjustment: 2,
+          },
+        ],
+      },
+    })
+
+    const createInput = toAmplifyCreateInput(inventoryItem)
+    expect(createInput.apparelVariants).toContain("\"priceAdjustment\":2")
+
+    const mapped = fromAmplifyRecord({
+      id: "item-1",
+      itemType: "APPAREL",
+      title: "Test Rifle",
+      status: "AVAILABLE",
+      unitPrice: 28,
+      quantity: 4,
+      taxMode: "DEFAULT",
+      sourceSystem: "MANUAL",
+      category: "Shirt",
+      material: "Cotton",
+      apparelVariants:
+        '[{"id":"variant-xl","size":"XL","color":"Black","sku":"TEE-XL-BLK","quantity":4,"priceAdjustment":2}]',
+      fflRequired: false,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    } as Parameters<typeof fromAmplifyRecord>[0])
+
+    expect(mapped.apparel?.variants?.[0]?.priceAdjustment).toBe(2)
+  })
 })

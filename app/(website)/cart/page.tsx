@@ -110,7 +110,7 @@ export default function CartPage() {
             <div className="flex flex-col">
               <div className="bg-surface-container-low divide-y divide-surface-container-high">
                 {items.map((item) => (
-                  <div key={item.slug} className="flex gap-4 p-5">
+                  <div key={item.lineId} className="flex gap-4 p-5">
                     {(() => {
                       const atLimit =
                         item.maxQuantity != null && item.quantity >= item.maxQuantity;
@@ -175,7 +175,7 @@ export default function CartPage() {
                           )}
                         </div>
                         <button
-                          onClick={() => removeItem(item.slug)}
+                          onClick={() => removeItem(item.lineId)}
                           aria-label={`Remove ${item.name}`}
                           className="shrink-0 text-muted-foreground/40 transition-colors hover:text-destructive"
                         >
@@ -192,7 +192,7 @@ export default function CartPage() {
                         <div className="flex items-center bg-surface-container">
                           <button
                             onClick={() =>
-                              setQuantity(item.slug, item.quantity - 1)
+                              setQuantity(item.lineId, item.quantity - 1)
                             }
                             aria-label="Decrease quantity"
                             className="flex size-8 items-center justify-center text-muted-foreground transition-colors hover:text-foreground hover:bg-surface-container-high"
@@ -208,7 +208,7 @@ export default function CartPage() {
                           <button
                             disabled={atLimit}
                             onClick={() =>
-                              setQuantity(item.slug, item.quantity + 1)
+                              setQuantity(item.lineId, item.quantity + 1)
                             }
                             aria-label="Increase quantity"
                             className="flex size-8 items-center justify-center text-muted-foreground transition-colors hover:text-foreground hover:bg-surface-container-high disabled:cursor-not-allowed disabled:text-muted-foreground/30 disabled:hover:bg-transparent disabled:hover:text-muted-foreground/30"

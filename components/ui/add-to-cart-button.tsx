@@ -2,10 +2,10 @@
 
 import { ArrowRight, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useCart, type CartItem } from "@/lib/cart/context";
+import { buildCartItemLineId, useCart, type CartItem } from "@/lib/cart/context";
 
 interface AddToCartButtonProps {
-  product: Omit<CartItem, "quantity">;
+  product: Omit<CartItem, "quantity" | "lineId">;
   label?: string;
   backordered?: boolean;
 }
@@ -28,7 +28,13 @@ export function AddToCartButton({
     <Button
       size="lg"
       disabled={backordered}
-      onClick={() => !backordered && addItem(product)}
+      onClick={() =>
+        !backordered &&
+        addItem({
+          ...product,
+          lineId: buildCartItemLineId(product),
+        })
+      }
       className="gradient-primary text-primary-foreground font-bold uppercase rounded-none border-0 w-full justify-center gap-3 text-xs"
       style={{ letterSpacing: "0.12em" }}
     >

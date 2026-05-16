@@ -99,6 +99,9 @@ function defaultColorHex(name: string) {
   const normalized = name.trim().toLowerCase()
 
   if (normalized.includes("black")) return "#1c1c1c"
+  if (normalized.includes("pink") || normalized.includes("rose") || normalized.includes("blush")) {
+    return "#d79aa5"
+  }
   if (normalized.includes("red") || normalized.includes("crimson")) return "#9f1d22"
   if (normalized.includes("burgundy") || normalized.includes("maroon")) return "#6f1d2a"
   if (normalized.includes("orange")) return "#c65a1e"
@@ -107,9 +110,17 @@ function defaultColorHex(name: string) {
   if (normalized.includes("charcoal")) return "#3d3d3d"
   if (normalized.includes("green") || normalized.includes("od")) return "#4a5240"
   if (normalized.includes("navy")) return "#1a2744"
-  if (normalized.includes("tan") || normalized.includes("sand") || normalized.includes("coyote")) {
+  if (normalized.includes("coyote")) return "#81613c"
+  if (
+    normalized.includes("tan") ||
+    normalized.includes("sand") ||
+    normalized.includes("khaki") ||
+    normalized.includes("beige") ||
+    normalized.includes("desert")
+  ) {
     return "#c2b280"
   }
+  if (normalized.includes("brown")) return "#7a5a3a"
   if (normalized.includes("grey") || normalized.includes("gray")) return "#7b7b7b"
   if (normalized.includes("white")) return "#f5f3ef"
 
@@ -219,6 +230,12 @@ async function toApparelProduct(
     colorHex: variant.colorHex,
     sku: variant.sku,
     quantity: variant.quantity,
+    priceAdjustment:
+      typeof variant.priceAdjustment === "number" &&
+      Number.isFinite(variant.priceAdjustment) &&
+      variant.priceAdjustment !== 0
+        ? variant.priceAdjustment
+        : undefined,
   }))
 
   const sizes = sortApparelSizes([

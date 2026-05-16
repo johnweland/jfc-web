@@ -104,6 +104,7 @@ function createEmptyApparelVariant(): InventoryApparelVariant {
     colorHex: "#1c1c1c",
     sku: "",
     quantity: 0,
+    priceAdjustment: 0,
   };
 }
 
@@ -122,6 +123,7 @@ function getInitialApparelVariants(initialData?: InventoryItem): InventoryAppare
         colorHex: "#1c1c1c",
         sku: initialData.sku ?? "",
         quantity: initialData.quantity,
+        priceAdjustment: 0,
       },
     ];
   }
@@ -271,6 +273,10 @@ export function InventoryForm({
       colorHex: variant.colorHex?.trim() || undefined,
       sku: variant.sku?.trim() || undefined,
       quantity: Number.isFinite(variant.quantity) ? Math.max(0, variant.quantity) : 0,
+      priceAdjustment:
+        Number.isFinite(variant.priceAdjustment) && variant.priceAdjustment !== 0
+          ? Number(variant.priceAdjustment)
+          : undefined,
     }));
 
     const actionableInvalidVariantIndex =
@@ -1037,7 +1043,7 @@ export function InventoryForm({
                       </Field>
                     </div>
 
-                    <div className="sm:col-span-3">
+                    <div className="sm:col-span-2">
                       <Field>
                         <FieldLabel htmlFor={`variant-sku-${variant.id}`}>
                           Variant SKU
@@ -1049,6 +1055,27 @@ export function InventoryForm({
                             updateApparelVariant(variant.id, { sku: e.target.value })
                           }
                           placeholder="Optional"
+                          className="h-9 font-mono"
+                        />
+                      </Field>
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <Field>
+                        <FieldLabel htmlFor={`variant-price-${variant.id}`}>
+                          Price Adj.
+                        </FieldLabel>
+                        <Input
+                          id={`variant-price-${variant.id}`}
+                          type="number"
+                          step="0.01"
+                          value={(variant.priceAdjustment ?? 0).toString()}
+                          onChange={(e) =>
+                            updateApparelVariant(variant.id, {
+                              priceAdjustment: Number.parseFloat(e.target.value) || 0,
+                            })
+                          }
+                          placeholder="0.00"
                           className="h-9 font-mono"
                         />
                       </Field>

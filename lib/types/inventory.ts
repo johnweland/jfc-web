@@ -33,6 +33,7 @@ export type InventoryApparelVariant = {
   colorHex?: string
   sku?: string
   quantity: number
+  priceAdjustment?: number
 }
 
 export type InventoryItem = {

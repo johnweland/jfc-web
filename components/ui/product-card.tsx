@@ -7,7 +7,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { AvailabilityBadge } from "@/components/ui/availability-badge";
-import { useCart } from "@/lib/cart/context";
+import { buildCartItemLineId, useCart } from "@/lib/cart/context";
 import { useFavorites } from "@/lib/favorites/context";
 import type { Product } from "@/lib/data/types";
 
@@ -55,6 +55,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
     e.preventDefault();
     if (isOutOfStock) return;
     addItem({
+      lineId: buildCartItemLineId(product),
       slug: product.slug,
       name: product.name,
       sku: product.sku,

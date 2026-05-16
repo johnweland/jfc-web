@@ -59,6 +59,7 @@ export interface ApparelVariant {
   colorHex?: string;
   sku?: string;
   quantity: number;
+  priceAdjustment?: number;
 }
 
 export interface Apparel extends BaseProduct {

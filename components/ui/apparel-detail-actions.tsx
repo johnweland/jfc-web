@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { useCart } from "@/lib/cart/context";
+import { buildCartItemLineId, useCart } from "@/lib/cart/context";
 import { DEFAULT_APPAREL_SIZE } from "@/lib/data/apparel-sizes";
 import { FavoriteButton } from "@/components/ui/favorite-button";
 import type { Apparel } from "@/lib/data/types";
@@ -35,6 +35,19 @@ export function ApparelDetailActions({ item }: ApparelDetailActionsProps) {
     (variant) => variant.color === selectedColor && variant.size === selectedSize,
   );
   const effectiveSku = selectedVariant?.sku ?? item.sku;
+  const effectivePrice = item.price + (selectedVariant?.priceAdjustment ?? 0);
+  const effectiveOriginalPrice =
+    item.originalPrice != null
+      ? item.originalPrice + (selectedVariant?.priceAdjustment ?? 0)
+      : undefined;
+  const priceAdjustment = selectedVariant?.priceAdjustment ?? 0;
+
+  function formatPrice(price: number) {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(price);
+  }
 
   function isAvailableCombination(color: string, size: string) {
     if (!hasVariantInventory) {
@@ -103,10 +116,17 @@ export function ApparelDetailActions({ item }: ApparelDetailActionsProps) {
   function handleAddToCart() {
     if (isBackordered) return;
     addItem({
+      lineId: buildCartItemLineId({
+        slug: item.slug,
+        sku: effectiveSku,
+        category: "apparel",
+        size: selectedSize !== DEFAULT_APPAREL_SIZE ? selectedSize : undefined,
+        color: selectedColor || undefined,
+      }),
       slug: item.slug,
       name: item.name,
       sku: effectiveSku,
-      price: item.price,
+      price: effectivePrice,
       category: "apparel",
       imageUrl: item.images[0],
       maxQuantity: selectedVariant?.quantity ?? item.availableQuantity,
@@ -119,6 +139,23 @@ export function ApparelDetailActions({ item }: ApparelDetailActionsProps) {
 
   return (
     <>
+      <div className="flex items-baseline gap-3">
+        <span className="font-display text-2xl font-bold text-foreground">
+          {formatPrice(effectivePrice)}
+        </span>
+        {effectiveOriginalPrice != null ? (
+          <span className="text-sm text-muted-foreground line-through">
+            {formatPrice(effectiveOriginalPrice)}
+          </span>
+        ) : null}
+        {priceAdjustment !== 0 ? (
+          <span className="text-sm text-muted-foreground">
+            Base {formatPrice(item.price)} {priceAdjustment > 0 ? "+" : "-"}{" "}
+            {formatPrice(Math.abs(priceAdjustment))}
+          </span>
+        ) : null}
+      </div>
+
       <Separator className="bg-border/30" />
 
       {/* Colors */}

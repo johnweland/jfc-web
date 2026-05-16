@@ -127,7 +127,7 @@ export function CartDrawer() {
           ) : (
             <ul className="divide-y divide-border/10">
               {items.map((item) => (
-                <li key={item.slug} className="flex gap-4 px-6 py-5">
+                <li key={item.lineId} className="flex gap-4 px-6 py-5">
                   {(() => {
                     const atLimit =
                       item.maxQuantity != null && item.quantity >= item.maxQuantity;
@@ -192,7 +192,7 @@ export function CartDrawer() {
                         )}
                       </div>
                       <button
-                        onClick={() => removeItem(item.slug)}
+                        onClick={() => removeItem(item.lineId)}
                         aria-label={`Remove ${item.name}`}
                         className="shrink-0 text-muted-foreground/40 transition-colors hover:text-destructive"
                       >
@@ -210,7 +210,7 @@ export function CartDrawer() {
                       <div className="flex items-center bg-surface-container">
                         <button
                           onClick={() =>
-                            setQuantity(item.slug, item.quantity - 1)
+                            setQuantity(item.lineId, item.quantity - 1)
                           }
                           aria-label="Decrease quantity"
                           className="flex size-7 items-center justify-center text-muted-foreground transition-colors hover:text-foreground hover:bg-surface-container-high"
@@ -226,7 +226,7 @@ export function CartDrawer() {
                         <button
                           disabled={atLimit}
                           onClick={() =>
-                            setQuantity(item.slug, item.quantity + 1)
+                            setQuantity(item.lineId, item.quantity + 1)
                           }
                           aria-label="Increase quantity"
                           className="flex size-7 items-center justify-center text-muted-foreground transition-colors hover:text-foreground hover:bg-surface-container-high disabled:cursor-not-allowed disabled:text-muted-foreground/30 disabled:hover:bg-transparent disabled:hover:text-muted-foreground/30"
