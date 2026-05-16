@@ -107,4 +107,38 @@ describe("inventory mapper finish field", () => {
 
     expect(mapped.apparel?.variants?.[0]?.priceAdjustment).toBe(2)
   })
+
+  it("normalizes legacy ammo categories when reading Amplify records", () => {
+    const item = fromAmplifyRecord({
+      id: "ammo-1",
+      itemType: "AMMUNITION",
+      category: "Ammo",
+      title: "9mm Ball",
+      status: "AVAILABLE",
+      unitPrice: 12,
+      quantity: 50,
+      taxMode: "DEFAULT",
+      sourceSystem: "ROCPAY",
+      fflRequired: false,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    } as Parameters<typeof fromAmplifyRecord>[0])
+
+    expect(item.category).toBe("Ammunition")
+  })
+
+  it("normalizes ammunition categories when writing Amplify records", () => {
+    const input = toAmplifyCreateInput(
+      makeInventoryItem({
+        itemType: "AMMUNITION",
+        firearm: undefined,
+        name: "9mm Ball",
+        category: "Ammo",
+        price: 12,
+        quantity: 50,
+      }),
+    )
+
+    expect(input.category).toBe("Ammunition")
+  })
 })

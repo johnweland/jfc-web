@@ -12,6 +12,7 @@ import { refreshInventoryImages } from "@/lib/inventory/image-urls"
 import { getStoreTaxSettings } from "@/lib/tax/settings"
 import { resolveInventoryTaxRate } from "@/lib/tax/shared"
 import { DEFAULT_APPAREL_SIZE, sortApparelSizes } from "@/lib/data/apparel-sizes"
+import { normalizeInventoryCategory } from "@/lib/inventory/category"
 import type { InventoryImage, InventoryItem } from "@/lib/types/inventory"
 import type {
   Apparel,
@@ -210,7 +211,12 @@ async function toPartProduct(
     taxRate,
     status,
     category: "part",
-    partType: item.category ?? item.model ?? item.brand ?? item.manufacturer ?? "Component",
+    partType:
+      normalizeInventoryCategory(item.category, item.itemType) ??
+      item.model ??
+      item.brand ??
+      item.manufacturer ??
+      "Component",
     compatibility: compatibility.length > 0 ? compatibility : ["General Use"],
     images: await resolveImageUrls(item.images, "/placeholder.svg"),
     description: item.description ?? "Product details coming soon.",

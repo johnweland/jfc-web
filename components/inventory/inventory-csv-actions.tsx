@@ -42,6 +42,7 @@ import type {
   ParsedInventoryRow,
 } from "@/lib/inventory/csv/types"
 import { toAmplifyCreateInput, toAmplifyUpdateInput } from "@/lib/inventory/mapper"
+import { normalizeInventoryCategory } from "@/lib/inventory/category"
 import type { InventoryItem, InventoryUnit } from "@/lib/types/inventory"
 import { createUnitFromImportAction } from "./inventory-units-actions"
 
@@ -167,7 +168,10 @@ function mergeImportedInventoryItem(existing: InventoryItem, imported: Inventory
     itemType: imported.itemType,
     status: imported.status,
     name: imported.name || existing.name,
-    category: imported.category ?? existing.category,
+    category: normalizeInventoryCategory(
+      imported.category ?? existing.category,
+      imported.itemType,
+    ),
     description: imported.description ?? existing.description,
     manufacturer: imported.manufacturer ?? existing.manufacturer,
     brand: imported.brand ?? existing.brand,

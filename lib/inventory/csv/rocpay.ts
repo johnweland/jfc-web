@@ -18,6 +18,7 @@ import {
   parseIntegerField,
   summarizeImportRows,
 } from "@/lib/inventory/csv/validation"
+import { normalizeInventoryCategory } from "@/lib/inventory/category"
 
 function mapTaxMode(value: string): {
   taxMode: InventoryTaxMode
@@ -96,7 +97,7 @@ function buildRocPayRow(
     itemType,
     status,
     name,
-    category: category || undefined,
+    category: normalizeInventoryCategory(category, itemType),
     description,
     sku: sku || undefined,
     price: typeof cost === "number" ? cost : 0,

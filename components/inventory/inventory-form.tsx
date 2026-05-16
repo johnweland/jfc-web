@@ -8,6 +8,7 @@ import { generateClient } from "aws-amplify/data";
 import type { Schema } from "@/amplify/data/resource";
 import { toAmplifyCreateInput, toAmplifyUpdateInput } from "@/lib/inventory/mapper";
 import { getApparelSizeOptions, sortApparelSizes } from "@/lib/data/apparel-sizes";
+import { normalizeInventoryCategory } from "@/lib/inventory/category";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -203,7 +204,9 @@ export function InventoryForm({
   const [location, setLocation] = useState(initialData?.location ?? "");
 
   // Part fields
-  const [partCategory, setPartCategory] = useState(initialData?.category ?? "")
+  const [partCategory, setPartCategory] = useState(
+    normalizeInventoryCategory(initialData?.category, initialData?.itemType) ?? "",
+  )
 
   // Firearm fields
   const [serialNumber, setSerialNumber] = useState(
@@ -319,9 +322,12 @@ export function InventoryForm({
       status,
       name,
       category:
-        itemType === "PART" || itemType === "ACCESSORY" || itemType === "OTHER" || itemType === "SERVICES"
-          || itemType === "AMMUNITION"
-          ? (partCategory || undefined)
+        itemType === "PART" ||
+        itemType === "ACCESSORY" ||
+        itemType === "OTHER" ||
+        itemType === "SERVICES" ||
+        itemType === "AMMUNITION"
+          ? normalizeInventoryCategory(partCategory, itemType)
           : undefined,
       description: description || undefined,
       manufacturer: manufacturer || undefined,

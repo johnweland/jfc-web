@@ -214,7 +214,7 @@ describe("RocPay CSV utilities", () => {
 
     expect(preview.rows[0]?.item).toMatchObject({
       itemType: "AMMUNITION",
-      category: "Ammo",
+      category: "Ammunition",
       sku: "AMMO-9MM",
     })
   })

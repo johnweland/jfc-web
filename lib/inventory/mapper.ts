@@ -11,6 +11,7 @@ import type {
   InventoryUnit,
   InventoryUnitStatus,
 } from "@/lib/types/inventory"
+import { normalizeInventoryCategory } from "@/lib/inventory/category"
 
 type AmplifyRecord = Schema["InventoryItem"]["type"]
 type AmplifyCreateInput = Schema["InventoryItem"]["createType"]
@@ -80,7 +81,10 @@ export function fromAmplifyRecord(r: AmplifyRecord): InventoryItem {
     itemType: r.itemType as InventoryItemType,
     status: r.status as InventoryStatus,
     name: r.title,
-    category: r.itemType !== "APPAREL" ? (r.category ?? undefined) : undefined,
+    category:
+      r.itemType !== "APPAREL"
+        ? normalizeInventoryCategory(r.category ?? undefined, r.itemType as InventoryItemType)
+        : undefined,
     description: r.description ?? undefined,
     manufacturer: r.manufacturer ?? undefined,
     brand: r.brand ?? undefined,
@@ -172,7 +176,10 @@ export function toAmplifyCreateInput(item: InventoryItem): AmplifyCreateInput {
     sku: item.sku,
     upc: item.upc,
     cost: item.cost,
-    category: item.itemType === "APPAREL" ? item.apparel?.apparelType : item.category,
+    category:
+      item.itemType === "APPAREL"
+        ? item.apparel?.apparelType
+        : normalizeInventoryCategory(item.category, item.itemType),
     // Firearm fields (flat in schema)
     serialNumber: item.firearm?.serialNumber,
     caliber: item.firearm?.caliber,
