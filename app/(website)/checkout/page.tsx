@@ -259,6 +259,7 @@ export default function CheckoutPage() {
   const [saveShippingToAccount, setSaveShippingToAccount] = useState(false);
   const [saveFflToAccount, setSaveFflToAccount] = useState(false);
   const [savingSelections, setSavingSelections] = useState(false);
+  const [submittingPayment, setSubmittingPayment] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [reviewMessage, setReviewMessage] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof FormState, string>>>({});
@@ -357,12 +358,17 @@ export default function CheckoutPage() {
           setForm((current) => ({
             ...current,
             recipientName: current.recipientName || defaultShipping.recipientName || "",
-            phone: current.phone || defaultShipping.phone || "",
+            phone: current.phone || defaultShipping.phone || profile?.phone || "",
             line1: current.line1 || defaultShipping.line1,
             line2: current.line2 || defaultShipping.line2 || "",
             city: current.city || defaultShipping.city,
             state: current.state || defaultShipping.state,
             postalCode: current.postalCode || defaultShipping.postalCode,
+          }));
+        } else if (profile?.phone) {
+          setForm((current) => ({
+            ...current,
+            phone: current.phone || profile.phone || "",
           }));
         }
 
@@ -633,10 +639,87 @@ export default function CheckoutPage() {
     setShowReview(true);
   }
 
-  function handlePlaceOrder() {
-    setReviewMessage(
-      "Review is ready. Order submission still needs to be connected to payment and order creation.",
-    );
+  async function handlePlaceOrder() {
+    if (!isSignedIn || !customerId) {
+      window.location.href = `/sign-in?redirect=${encodeURIComponent("/checkout")}`;
+      return;
+    }
+
+    const errors = validateForm(form, hasFfl);
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setReviewMessage("Fix the highlighted fields before continuing.");
+      return;
+    }
+
+    await persistOptionalSelections();
+
+    setSubmittingPayment(true);
+    setReviewMessage("Redirecting to Worldnet's secure hosted payment page...")
+
+    const checkoutPayload = {
+      customerId,
+      email: form.email.trim(),
+      shippingAddress: {
+        recipientName: form.recipientName.trim(),
+        phone: form.phone.trim(),
+        line1: form.line1.trim(),
+        line2: form.line2.trim(),
+        city: form.city.trim(),
+        state: form.state.trim().toUpperCase(),
+        postalCode: form.postalCode.trim(),
+        country: "US",
+      },
+      ffl: hasFfl
+        ? {
+            fflName: form.fflName.trim(),
+            fflNumber: form.fflNumber.trim(),
+            fflContact: form.fflContact.trim(),
+            fflPhone: form.fflPhone.trim(),
+            fflEmail: form.fflEmail.trim(),
+            fflLine1: form.fflLine1.trim(),
+            fflLine2: form.fflLine2.trim(),
+            fflCity: form.fflCity.trim(),
+            fflState: form.fflState.trim().toUpperCase(),
+            fflPostalCode: form.fflPostalCode.trim(),
+            notes: form.notes.trim(),
+          }
+        : undefined,
+      items,
+      subtotal,
+      tax: estimatedTax,
+      total,
+    };
+
+    try {
+      const response = await fetch("/api/worldnet/checkout", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(checkoutPayload),
+      });
+
+      if (!response.ok) {
+        const errorBody = (await response.json().catch(() => null)) as {
+          detail?: string;
+          error?: string;
+        } | null;
+        throw new Error(errorBody?.detail ?? errorBody?.error ?? "Unable to start Worldnet checkout.");
+      }
+
+      const data = (await response.json()) as { redirectUrl?: string };
+
+      if (!data.redirectUrl) {
+        throw new Error("Worldnet checkout did not return a redirect URL.");
+      }
+
+      window.location.assign(data.redirectUrl);
+    } catch (error) {
+      console.error("[checkout] unable to start Worldnet checkout", error);
+      setSubmittingPayment(false);
+      setReviewMessage("We couldn't start the secure payment page. Please try again.");
+    }
   }
 
   if (items.length === 0) {
@@ -1267,10 +1350,11 @@ export default function CheckoutPage() {
                   </Button>
                   <Button
                     onClick={handlePlaceOrder}
+                    disabled={submittingPayment}
                     className="gradient-primary text-primary-foreground font-bold uppercase rounded-none border-0 gap-2 text-xs"
                     style={{ letterSpacing: "0.12em" }}
                   >
-                    PLACE ORDER
+                    {submittingPayment ? "REDIRECTING..." : "PLACE ORDER"}
                     <Lock className="size-3.5" />
                   </Button>
                 </div>

@@ -9,11 +9,11 @@ import {
   Trash2,
   ShieldCheck,
   ArrowRight,
-  Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useCart } from "@/lib/cart/context";
+import { ONLINE_CHECKOUT_ENABLED } from "@/lib/commerce/config";
 
 function formatPrice(price: number) {
   return new Intl.NumberFormat("en-US", {
@@ -51,31 +51,32 @@ export default function CartPage() {
           </h1>
         </div>
 
-        {/* ── Checkout progress stepper ────────────────────────── */}
-        <div className="flex items-center mb-10">
-          {steps.map((step, idx) => (
-            <div key={step.num} className="flex items-center flex-1">
-              <div
-                className={`flex items-center gap-2 px-3 py-2 text-[10px] font-bold uppercase ${
-                  step.active
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-surface-container text-muted-foreground/40"
-                }`}
-                style={{ letterSpacing: "0.1em" }}
-              >
-                <span>{step.num}</span>
-                <span className="hidden sm:inline">{step.label}</span>
-              </div>
-              {idx < steps.length - 1 && (
+        {ONLINE_CHECKOUT_ENABLED ? (
+          <div className="mb-10 flex items-center">
+            {steps.map((step, idx) => (
+              <div key={step.num} className="flex flex-1 items-center">
                 <div
-                  className={`flex-1 h-px ${
-                    step.active ? "bg-primary/40" : "bg-border/30"
+                  className={`flex items-center gap-2 px-3 py-2 text-[10px] font-bold uppercase ${
+                    step.active
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-surface-container text-muted-foreground/40"
                   }`}
-                />
-              )}
-            </div>
-          ))}
-        </div>
+                  style={{ letterSpacing: "0.1em" }}
+                >
+                  <span>{step.num}</span>
+                  <span className="hidden sm:inline">{step.label}</span>
+                </div>
+                {idx < steps.length - 1 ? (
+                  <div
+                    className={`h-px flex-1 ${
+                      step.active ? "bg-primary/40" : "bg-border/30"
+                    }`}
+                  />
+                ) : null}
+              </div>
+            ))}
+          </div>
+        ) : null}
 
         {/* ── Empty state ──────────────────────────────────────── */}
         {items.length === 0 ? (
@@ -259,7 +260,7 @@ export default function CartPage() {
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span style={{ letterSpacing: "0.08em" }}>SHIPPING</span>
                     <span style={{ letterSpacing: "0.04em" }}>
-                      Calculated at checkout
+                      {ONLINE_CHECKOUT_ENABLED ? "Calculated at checkout" : "Determined in store"}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -276,7 +277,7 @@ export default function CartPage() {
                       className="font-display text-xs font-bold uppercase text-foreground"
                       style={{ letterSpacing: "0.1em" }}
                     >
-                      GRAND TOTAL
+                      {ONLINE_CHECKOUT_ENABLED ? "GRAND TOTAL" : "ESTIMATED TOTAL"}
                     </span>
                     <span className="font-display text-lg font-bold text-primary">
                       {formatPrice(total)}
@@ -289,34 +290,42 @@ export default function CartPage() {
                   <div className="flex items-start gap-2 bg-surface-container p-3">
                     <ShieldCheck className="size-3.5 text-primary shrink-0 mt-0.5" />
                     <p className="text-[10px] text-muted-foreground leading-relaxed">
-                      One or more items require an FFL transfer. Dealer
-                      selection at next step.
+                      {ONLINE_CHECKOUT_ENABLED
+                        ? "One or more items require an FFL transfer. Dealer selection at next step."
+                        : "Firearm purchases require in-store paperwork, identification, and a background check before transfer."}
                     </p>
                   </div>
                 )}
 
-                {/* CTA */}
-                <Button
-                  asChild
-                  className="gradient-primary text-primary-foreground font-bold uppercase rounded-none border-0 w-full justify-center gap-2 text-xs"
-                  style={{ letterSpacing: "0.12em" }}
-                >
-                  <Link href="/checkout">
-                    PROCEED TO CHECKOUT
-                    <ArrowRight className="size-3.5" />
-                  </Link>
-                </Button>
-
-                {/* Security note */}
-                <div className="flex items-center justify-center gap-1.5">
-                  <Lock className="size-3 text-muted-foreground/40" />
-                  <p
-                    className="text-[10px] text-muted-foreground/40 uppercase"
-                    style={{ letterSpacing: "0.06em" }}
+                {ONLINE_CHECKOUT_ENABLED ? (
+                  <Button
+                    asChild
+                    className="gradient-primary w-full justify-center rounded-none border-0 text-xs font-bold uppercase text-primary-foreground"
+                    style={{ letterSpacing: "0.12em" }}
                   >
-                    256-bit encrypted checkout
-                  </p>
-                </div>
+                    <Link href="/checkout">
+                      PROCEED TO CHECKOUT
+                      <ArrowRight data-icon="inline-end" />
+                    </Link>
+                  </Button>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      Online checkout is not available yet. Keep this cart for reference and visit
+                      our store to confirm availability, final pricing, and complete your purchase.
+                    </p>
+                    <Button
+                      asChild
+                      className="gradient-primary w-full justify-center rounded-none border-0 text-xs font-bold uppercase text-primary-foreground"
+                      style={{ letterSpacing: "0.12em" }}
+                    >
+                      <Link href="/ffl-info">PLAN YOUR STORE VISIT</Link>
+                    </Button>
+                    <p className="text-center text-[10px] uppercase text-muted-foreground/60">
+                      600 2nd Street · Jackson, MN · (507) 675-4337
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

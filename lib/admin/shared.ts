@@ -62,6 +62,9 @@ export const ADMIN_ORDER_SELECTION = [
   "shippingMethod",
   "shippingCarrier",
   "trackingNumber",
+  "archivedAt",
+  "paymentProvider",
+  "paymentReference",
   "shippingAddressSnapshot.*",
   "transferFflSnapshot.*",
   "items.*",
@@ -76,6 +79,11 @@ export type OrderRecord = Schema["Order"]["type"]
 export type OrderItemRecord = NonNullable<NonNullable<OrderRecord["items"]>[number]>
 export type PostalAddressRecord = NonNullable<OrderRecord["shippingAddressSnapshot"]>
 export type FflLocationSnapshotRecord = NonNullable<OrderRecord["transferFflSnapshot"]>
+export type OrderShipmentRecord = {
+  shippingMethod?: string | null
+  shippingCarrier?: string | null
+  trackingNumber?: string | null
+}
 
 export type AdminOrderStatus = OrderRecord["status"]
 export type AdminPaymentStatus = OrderRecord["paymentStatus"]
@@ -98,6 +106,11 @@ export type AdminOrder = {
   shippingMethod?: string | null
   shippingCarrier?: string | null
   trackingNumber?: string | null
+  customerShipment?: OrderShipmentRecord | null
+  fflShipment?: OrderShipmentRecord | null
+  archivedAt?: string | null
+  paymentProvider?: string | null
+  paymentReference?: string | null
   shippingAddressSnapshot?: OrderRecord["shippingAddressSnapshot"]
   transferFflSnapshot?: OrderRecord["transferFflSnapshot"]
   items: OrderItemRecord[]
@@ -105,6 +118,7 @@ export type AdminOrder = {
   updatedAt: string
   itemCount: number
   containsFirearm: boolean
+  containsNonFflItems: boolean
 }
 
 export type AdminCustomer = {
@@ -149,6 +163,24 @@ export function formatCurrency(amount: number) {
   }).format(amount)
 }
 
+const ADMIN_TIME_ZONE = "America/Chicago"
+
+function getDateParts(
+  value: Date,
+  options: Intl.DateTimeFormatOptions,
+) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: ADMIN_TIME_ZONE,
+    ...options,
+  }).formatToParts(value)
+
+  return Object.fromEntries(
+    parts
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, part.value]),
+  ) as Partial<Record<Intl.DateTimeFormatPartTypes, string>>
+}
+
 export function formatDate(value?: string | null) {
   if (!value) {
     return "Unavailable"
@@ -160,11 +192,17 @@ export function formatDate(value?: string | null) {
     return "Unavailable"
   }
 
-  return new Intl.DateTimeFormat("en-US", {
+  const parts = getDateParts(parsed, {
     month: "short",
     day: "numeric",
     year: "numeric",
-  }).format(parsed)
+  })
+
+  if (!parts.month || !parts.day || !parts.year) {
+    return "Unavailable"
+  }
+
+  return `${parts.month} ${parts.day}, ${parts.year}`
 }
 
 export function formatDateTime(value?: string | null) {
@@ -178,13 +216,53 @@ export function formatDateTime(value?: string | null) {
     return "Unavailable"
   }
 
-  return new Intl.DateTimeFormat("en-US", {
+  const parts = getDateParts(parsed, {
     month: "short",
     day: "numeric",
     year: "numeric",
     hour: "numeric",
     minute: "2-digit",
-  }).format(parsed)
+    hour12: true,
+  })
+
+  if (!parts.month || !parts.day || !parts.year || !parts.hour || !parts.minute || !parts.dayPeriod) {
+    return "Unavailable"
+  }
+
+  return `${parts.month} ${parts.day}, ${parts.year} at ${parts.hour}:${parts.minute} ${parts.dayPeriod}`
+}
+
+function hasShipmentData(
+  shipment?: {
+    shippingMethod?: string | null
+    shippingCarrier?: string | null
+    trackingNumber?: string | null
+  } | null,
+) {
+  return Boolean(shipment?.shippingMethod || shipment?.shippingCarrier || shipment?.trackingNumber)
+}
+
+function buildLegacyShipment(order: OrderRecord) {
+  if (!hasShipmentData(order)) {
+    return null
+  }
+
+  return {
+    shippingMethod: order.shippingMethod ?? null,
+    shippingCarrier: order.shippingCarrier ?? null,
+    trackingNumber: order.trackingNumber ?? null,
+  }
+}
+
+export function getOrderTrackingSummary(order: Pick<AdminOrder, "customerShipment" | "fflShipment" | "trackingNumber">) {
+  const customerTracking = order.customerShipment?.trackingNumber?.trim()
+  const fflTracking = order.fflShipment?.trackingNumber?.trim()
+
+  if (customerTracking && fflTracking) {
+    return "Customer + FFL"
+  }
+
+  return customerTracking || fflTracking || order.trackingNumber || "Unavailable"
 }
 
 export function humanizeEnum(value?: string | null) {
@@ -233,6 +311,15 @@ export function buildAdminOrders(
     .map<AdminOrder>((order) => {
       const customer = customersById.get(order.customerId)
       const items = (order.items ?? []).filter((item): item is OrderItemRecord => Boolean(item))
+      const containsFirearm = items.some(
+        (item) => item.fflRequired || item.itemType === "FIREARM",
+      )
+      const containsNonFflItems = items.some((item) => !item.fflRequired)
+      const legacyShipment = buildLegacyShipment(order)
+      const customerShipment =
+        legacyShipment && (!containsFirearm || containsNonFflItems) ? legacyShipment : null
+      const fflShipment =
+        legacyShipment && containsFirearm && !containsNonFflItems ? legacyShipment : null
 
       return {
         id: order.id,
@@ -251,15 +338,19 @@ export function buildAdminOrders(
         shippingMethod: order.shippingMethod,
         shippingCarrier: order.shippingCarrier,
         trackingNumber: order.trackingNumber,
+        customerShipment,
+        fflShipment,
+        archivedAt: order.archivedAt,
+        paymentProvider: order.paymentProvider,
+        paymentReference: order.paymentReference,
         shippingAddressSnapshot: order.shippingAddressSnapshot,
         transferFflSnapshot: order.transferFflSnapshot,
         items,
         createdAt: order.createdAt ?? "",
         updatedAt: order.updatedAt ?? "",
         itemCount: items.reduce((sum, item) => sum + (item.quantity ?? 0), 0),
-        containsFirearm: items.some(
-          (item) => item.fflRequired || item.itemType === "FIREARM",
-        ),
+        containsFirearm,
+        containsNonFflItems,
       }
     })
     .sort((left, right) => compareIsoDesc(left.createdAt, right.createdAt))

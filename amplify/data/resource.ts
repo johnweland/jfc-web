@@ -35,8 +35,12 @@ const schema = a.schema({
   ]),
   PaymentStatus: a.enum([
     'UNPAID',
+    'PENDING_PAYMENT',
+    'PAYMENT_VALIDATION_RECEIVED',
     'AUTHORIZED',
     'PAID',
+    'PAYMENT_DECLINED',
+    'PAYMENT_FAILED',
     'PARTIALLY_REFUNDED',
     'REFUNDED',
     'FAILED',
@@ -88,6 +92,12 @@ const schema = a.schema({
     email: a.email(),
     address: a.ref('PostalAddress'),
     notes: a.string(),
+  }),
+
+  OrderShipmentSnapshot: a.customType({
+    shippingMethod: a.string(),
+    shippingCarrier: a.string(),
+    trackingNumber: a.string(),
   }),
 
   OrderItemSnapshot: a.customType({
@@ -463,6 +473,11 @@ const schema = a.schema({
       shippingMethod: a.string(),
       shippingCarrier: a.string(),
       trackingNumber: a.string(),
+      customerShipment: a.ref('OrderShipmentSnapshot'),
+      fflShipment: a.ref('OrderShipmentSnapshot'),
+      archivedAt: a.datetime(),
+      paymentProvider: a.string(),
+      paymentReference: a.string(),
       shippingAddressSnapshot: a.ref('PostalAddress'),
       transferFflSnapshot: a.ref('FflLocationSnapshot'),
       items: a.ref('OrderItemSnapshot').array().required(),
@@ -474,8 +489,46 @@ const schema = a.schema({
       index('status').queryField('ordersByStatus'),
     ])
     .authorization((allow) => [
+      allow.ownerDefinedIn('customerId').identityClaim('sub').to(['create', 'read', 'update']),
+      allow.group('ADMINS'),
+    ]),
+
+  WorldnetPayment: a
+    .model({
+      orderNumber: a.string().required(),
+      orderId: a.id(),
+      customerId: a.string(),
+      terminalId: a.string().required(),
+      currency: a.string().required(),
+      amount: a.float().required(),
+      hashMode: a.string().required(),
+      requestDateTime: a.string().required(),
+      status: a.ref('PaymentStatus').required(),
+      uniqueRef: a.string(),
+      approvalCode: a.string(),
+      responseCode: a.string(),
+      responseText: a.string(),
+      receiptReceivedAt: a.datetime(),
+      validationReceivedAt: a.datetime(),
+      receiptHashValidated: a.boolean().default(false),
+      validationHashValidated: a.boolean().default(false),
+      receiptObserved: a.boolean().default(false),
+      validationObserved: a.boolean().default(false),
+      paymentProvider: a.string().required().default('WORLDNET'),
+      requestFields: a.json(),
+      receiptFields: a.json(),
+      validationFields: a.json(),
+    })
+    .identifier(['orderNumber'])
+    .secondaryIndexes((index) => [
+      index('uniqueRef').queryField('worldnetPaymentsByUniqueRef'),
+      index('customerId').queryField('worldnetPaymentsByCustomerId'),
+      index('status').queryField('worldnetPaymentsByStatus'),
+    ])
+    .authorization((allow) => [
       allow.ownerDefinedIn('customerId').identityClaim('sub').to(['read']),
       allow.group('ADMINS'),
+      allow.publicApiKey().to(['create', 'read', 'update']),
     ]),
 });
 
@@ -486,7 +539,10 @@ export const data = defineData({
   authorizationModes: {
     defaultAuthorizationMode: 'userPool',
     apiKeyAuthorizationMode: {
-      expiresInDays: 30,
+      // The storefront relies on this key for anonymous catalog reads. Keep the
+      // maximum AppSync lifetime so routine visitors do not lose inventory
+      // access after a short-lived sandbox-style 30-day key expires.
+      expiresInDays: 365,
     },
   },
 });

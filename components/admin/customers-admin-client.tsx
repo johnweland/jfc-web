@@ -54,10 +54,87 @@ import {
 const client = generateClient<Schema>()
 
 type OrderPresenceFilter = "all" | "with-orders" | "no-orders"
+type PageSizeOption = 5 | 10 | 25 | 50
 type ListResponse<T> = {
   data?: T[]
   errors?: readonly { message: string }[]
   nextToken?: string | null
+}
+
+const PAGE_SIZE_OPTIONS: PageSizeOption[] = [5, 10, 25, 50]
+
+function PaginationControls({
+  page,
+  totalPages,
+  pageSize,
+  itemLabel,
+  totalItems,
+  onPageChange,
+  onPageSizeChange,
+}: {
+  page: number
+  totalPages: number
+  pageSize: PageSizeOption
+  itemLabel: string
+  totalItems: number
+  onPageChange: (page: number) => void
+  onPageSizeChange: (pageSize: PageSizeOption) => void
+}) {
+  const start = totalItems === 0 ? 0 : (page - 1) * pageSize + 1
+  const end = Math.min(page * pageSize, totalItems)
+
+  return (
+    <div className="flex flex-col gap-3 border-t border-border/40 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="text-sm text-muted-foreground">
+        Showing {start}-{end} of {totalItems} {itemLabel}
+      </div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Per page</span>
+          <Select
+            value={String(pageSize)}
+            onValueChange={(value) => onPageSizeChange(Number(value) as PageSizeOption)}
+          >
+            <SelectTrigger className="w-[88px]">
+              <SelectValue placeholder="Per page" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                {PAGE_SIZE_OPTIONS.map((option) => (
+                  <SelectItem key={option} value={String(option)}>
+                    {option}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-none"
+            onClick={() => onPageChange(page - 1)}
+            disabled={page <= 1}
+          >
+            Previous
+          </Button>
+          <span className="min-w-20 text-center text-sm text-muted-foreground">
+            Page {page} of {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-none"
+            onClick={() => onPageChange(page + 1)}
+            disabled={page >= totalPages}
+          >
+            Next
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 async function listAllCustomerProfilesClientSide() {
@@ -420,6 +497,8 @@ export function CustomersAdminClient({
   )
   const [searchQuery, setSearchQuery] = useState("")
   const [orderPresenceFilter, setOrderPresenceFilter] = useState<OrderPresenceFilter>("all")
+  const [pageSize, setPageSize] = useState<PageSizeOption>(10)
+  const [page, setPage] = useState(1)
 
   const deferredSearchQuery = useDeferredValue(searchQuery)
 
@@ -478,6 +557,13 @@ export function CustomersAdminClient({
       return true
     })
   }, [customers, deferredSearchQuery, orderPresenceFilter])
+
+  const totalPages = Math.max(1, Math.ceil(filteredCustomers.length / pageSize))
+  const currentPage = Math.min(page, totalPages)
+  const paginatedCustomers = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize
+    return filteredCustomers.slice(startIndex, startIndex + pageSize)
+  }, [currentPage, filteredCustomers, pageSize])
 
   const selectedCustomer = selectedCustomerId
     ? customers.find((customer) => customer.customerId === selectedCustomerId) ?? null
@@ -549,14 +635,20 @@ export function CustomersAdminClient({
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/60" />
             <Input
               value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
+              onChange={(event) => {
+                setSearchQuery(event.target.value)
+                setPage(1)
+              }}
               placeholder="Search name, email, or phone"
               className="pl-9"
             />
           </div>
           <Select
             value={orderPresenceFilter}
-            onValueChange={(value) => setOrderPresenceFilter(value as OrderPresenceFilter)}
+            onValueChange={(value) => {
+              setOrderPresenceFilter(value as OrderPresenceFilter)
+              setPage(1)
+            }}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Order presence" />
@@ -602,7 +694,7 @@ export function CustomersAdminClient({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredCustomers.map((customer) => (
+                  {paginatedCustomers.map((customer) => (
                     <TableRow key={customer.customerId}>
                       <TableCell className="px-4 py-3">
                         <button
@@ -636,10 +728,22 @@ export function CustomersAdminClient({
                 </TableBody>
               </Table>
             </CardContent>
+            <PaginationControls
+              page={currentPage}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              itemLabel="customers"
+              totalItems={filteredCustomers.length}
+              onPageChange={setPage}
+              onPageSizeChange={(nextPageSize) => {
+                setPageSize(nextPageSize)
+                setPage(1)
+              }}
+            />
           </Card>
 
           <div className="grid gap-4 lg:hidden">
-            {filteredCustomers.map((customer) => (
+            {paginatedCustomers.map((customer) => (
               <Card key={customer.customerId} className="border-border/60 bg-surface-container-low">
                 <CardHeader className="gap-3">
                   <div className="flex items-start justify-between gap-3">
@@ -688,6 +792,20 @@ export function CustomersAdminClient({
                 </CardContent>
               </Card>
             ))}
+            <Card className="border-border/60 bg-surface-container-low lg:hidden">
+              <PaginationControls
+                page={currentPage}
+                totalPages={totalPages}
+                pageSize={pageSize}
+                itemLabel="customers"
+                totalItems={filteredCustomers.length}
+                onPageChange={setPage}
+                onPageSizeChange={(nextPageSize) => {
+                  setPageSize(nextPageSize)
+                  setPage(1)
+                }}
+              />
+            </Card>
           </div>
         </>
       )}

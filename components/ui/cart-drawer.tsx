@@ -9,12 +9,11 @@ import {
   Plus,
   Trash2,
   ShieldCheck,
-  ArrowRight,
-  Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useCart } from "@/lib/cart/context";
+import { ONLINE_CHECKOUT_ENABLED } from "@/lib/commerce/config";
 
 function formatPrice(price: number) {
   return new Intl.NumberFormat("en-US", {
@@ -266,7 +265,7 @@ export function CartDrawer() {
                   className="font-display text-xs font-bold uppercase text-foreground"
                   style={{ letterSpacing: "0.1em" }}
                 >
-                  TOTAL ORDER
+                  {ONLINE_CHECKOUT_ENABLED ? "TOTAL ORDER" : "ESTIMATED TOTAL"}
                 </span>
                 <span className="font-display text-base font-bold text-primary">
                   {formatPrice(total)}
@@ -274,7 +273,6 @@ export function CartDrawer() {
               </div>
             </div>
 
-            {/* CTAs */}
             <div className="flex flex-col gap-2">
               <Button
                 asChild
@@ -282,31 +280,29 @@ export function CartDrawer() {
                 style={{ letterSpacing: "0.12em" }}
                 onClick={closeCart}
               >
-                <Link href="/checkout">PROCEED TO CHECKOUT
-                  <ArrowRight className="size-3.5" />
+                <Link href={ONLINE_CHECKOUT_ENABLED ? "/checkout" : "/cart"}>
+                  {ONLINE_CHECKOUT_ENABLED ? "PROCEED TO CHECKOUT" : "VIEW CART & ESTIMATED TOTAL"}
                 </Link>
               </Button>
-              <Button
-                asChild
-                variant="outline"
-                className="rounded-none uppercase font-bold border-border/30 text-foreground hover:bg-surface-container w-full justify-center text-xs"
-                style={{ letterSpacing: "0.1em" }}
-                onClick={closeCart}
-              >
-                <Link href="/cart">VIEW FULL CART</Link>
-              </Button>
+              {ONLINE_CHECKOUT_ENABLED ? (
+                <Button
+                  asChild
+                  variant="outline"
+                  className="rounded-none uppercase font-bold border-border/30 text-foreground hover:bg-surface-container w-full justify-center text-xs"
+                  style={{ letterSpacing: "0.1em" }}
+                  onClick={closeCart}
+                >
+                  <Link href="/cart">VIEW FULL CART</Link>
+                </Button>
+              ) : null}
             </div>
 
-            {/* Security note */}
-            <div className="flex items-center justify-center gap-1.5">
-              <Lock className="size-3 text-muted-foreground/40" />
-              <p
-                className="text-[10px] text-muted-foreground/40 uppercase"
-                style={{ letterSpacing: "0.06em" }}
-              >
-                Secure checkout encrypted with 256-bit protocol
+            {!ONLINE_CHECKOUT_ENABLED ? (
+              <p className="text-center text-[10px] leading-relaxed text-muted-foreground/60">
+                Online checkout is not available yet. Visit the store to confirm availability and
+                complete your purchase.
               </p>
-            </div>
+            ) : null}
           </div>
         )}
       </aside>

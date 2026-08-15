@@ -6,6 +6,10 @@ import type { Schema } from "@/amplify/data/resource"
 import { amplifyOutputs } from "@/lib/auth/amplify-server"
 import { getServerAuthState } from "@/lib/auth/server"
 import { listE2eInventoryItems } from "@/lib/inventory/e2e-store"
+import {
+  PUBLIC_INVENTORY_SELECTION,
+  PUBLIC_LEGACY_INVENTORY_SELECTION,
+} from "@/lib/inventory/selections"
 import type { InventoryItem } from "@/lib/types/inventory"
 import { refreshInventoryImages } from "./image-urls"
 import { fromAmplifyRecord } from "./mapper"
@@ -227,42 +231,23 @@ export async function listPublicInventory(): Promise<InventoryItem[]> {
     return listE2eInventoryItems().sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
   }
 
+  // Signed-in customers can use their user-pool read permission. Everyone else
+  // uses the public API key; neither path requests staff-only fields.
   const authState = await getServerAuthState()
-
-  if (authState?.isSignedIn) {
-    const client = getClient()
-    const primary = await listAllInventoryRecords(client, TRACKED_INVENTORY_SELECTION)
-
-    if (!hasTaxSchemaReadError(primary.errors) && !hasTrackingSchemaReadError(primary.errors)) {
-      if (primary.errors?.length) {
-        console.error("[inventory/data] listPublicInventory userPool errors", primary.errors)
-      }
-      return mapInventoryRecords((primary.data ?? []) as Schema["InventoryItem"]["type"][])
-    }
-
-    const legacy = await listAllInventoryRecords(client, LEGACY_INVENTORY_SELECTION)
-
-    if (legacy.errors?.length) {
-      console.error("[inventory/data] listPublicInventory userPool legacy fallback errors", legacy.errors)
-    }
-
-    return mapInventoryRecords((legacy.data ?? []) as Schema["InventoryItem"]["type"][])
-  }
-
-  const client = getPublicClient()
-  const primary = await listAllInventoryRecords(client, TRACKED_INVENTORY_SELECTION)
+  const client = authState?.isSignedIn ? getClient() : getPublicClient()
+  const primary = await listAllInventoryRecords(client, PUBLIC_INVENTORY_SELECTION)
 
   if (!hasTaxSchemaReadError(primary.errors) && !hasTrackingSchemaReadError(primary.errors)) {
     if (primary.errors?.length) {
-      console.error("[inventory/data] listPublicInventory apiKey errors", primary.errors)
+      console.error("[inventory/data] listPublicInventory storefront errors", primary.errors)
     }
     return mapInventoryRecords((primary.data ?? []) as Schema["InventoryItem"]["type"][])
   }
 
-  const legacy = await listAllInventoryRecords(client, LEGACY_INVENTORY_SELECTION)
+  const legacy = await listAllInventoryRecords(client, PUBLIC_LEGACY_INVENTORY_SELECTION)
 
   if (legacy.errors?.length) {
-    console.error("[inventory/data] listPublicInventory apiKey legacy fallback errors", legacy.errors)
+    console.error("[inventory/data] listPublicInventory storefront legacy fallback errors", legacy.errors)
   }
 
   return mapInventoryRecords((legacy.data ?? []) as Schema["InventoryItem"]["type"][])

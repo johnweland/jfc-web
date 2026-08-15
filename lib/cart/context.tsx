@@ -3,6 +3,7 @@
 import {
   createContext,
   useContext,
+  useEffect,
   useReducer,
   useCallback,
   type ReactNode,
@@ -38,6 +39,7 @@ type Action =
   | { type: "ADD"; payload: Omit<CartItem, "quantity"> & { quantity?: number } }
   | { type: "REMOVE"; lineId: string }
   | { type: "SET_QTY"; lineId: string; quantity: number }
+  | { type: "HYDRATE"; items: CartItem[] }
   | { type: "OPEN" }
   | { type: "CLOSE" }
   | { type: "CLEAR" };
@@ -121,6 +123,11 @@ function cartReducer(state: CartState, action: Action): CartState {
         ),
       };
     }
+    case "HYDRATE":
+      return {
+        ...state,
+        items: action.items,
+      };
     case "OPEN":
       return { ...state, isOpen: true };
     case "CLOSE":
@@ -129,6 +136,78 @@ function cartReducer(state: CartState, action: Action): CartState {
       return { ...state, items: [] };
     default:
       return state;
+  }
+}
+
+// ─── localStorage helpers ─────────────────────────────────────────────────────
+
+const STORAGE_KEY = "jfc-cart";
+
+function isCartItem(value: unknown): value is CartItem {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const item = value as Partial<CartItem>;
+
+  return (
+    typeof item.lineId === "string" &&
+    typeof item.slug === "string" &&
+    typeof item.name === "string" &&
+    typeof item.sku === "string" &&
+    typeof item.price === "number" &&
+    Number.isFinite(item.price) &&
+    (item.category === "firearm" || item.category === "part" || item.category === "apparel") &&
+    typeof item.taxRate === "number" &&
+    Number.isFinite(item.taxRate) &&
+    typeof item.requiresFFL === "boolean" &&
+    typeof item.quantity === "number" &&
+    Number.isFinite(item.quantity) &&
+    item.quantity > 0
+  );
+}
+
+function sanitizeStoredCartItems(value: unknown): CartItem[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter(isCartItem)
+    .map((item) => ({
+      ...item,
+      quantity: clampQuantity(item.quantity, item.maxQuantity),
+    }))
+    .filter((item) => item.quantity > 0);
+}
+
+export function loadCartFromStorage(): CartItem[] {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? sanitizeStoredCartItems(JSON.parse(raw)) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveCartToStorage(items: CartItem[]) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    if (items.length === 0) {
+      localStorage.removeItem(STORAGE_KEY);
+      return;
+    }
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  } catch {
+    // localStorage can be unavailable in private browsing or locked-down contexts.
   }
 }
 
@@ -155,6 +234,25 @@ const CartContext = createContext<CartContextValue | null>(null);
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(cartReducer, { items: [], isOpen: false });
+  const [hydrated, markHydrated] = useReducer(() => true, false);
+
+  useEffect(() => {
+    const stored = loadCartFromStorage();
+
+    if (stored.length > 0) {
+      dispatch({ type: "HYDRATE", items: stored });
+    }
+
+    markHydrated();
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) {
+      return;
+    }
+
+    saveCartToStorage(state.items);
+  }, [hydrated, state.items]);
 
   const addItem = useCallback(
     (item: Omit<CartItem, "quantity"> & { quantity?: number }) =>

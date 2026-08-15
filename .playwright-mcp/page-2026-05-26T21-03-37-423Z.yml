@@ -1,0 +1,32 @@
+- main [ref=e2]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - link "Return to site" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - img [ref=e6]
+        - text: Return to site
+      - generic [ref=e8]:
+        - img [ref=e9]
+        - generic [ref=e12]: Cognito Auth Foundation
+      - heading "Secure access for customers, staff, and admins." [level=1] [ref=e13]
+      - paragraph [ref=e14]: Customer accounts stay in a single Cognito User Pool, while staff and admin access is elevated through group membership and TOTP-based MFA.
+    - generic [ref=e15]:
+      - generic [ref=e16]:
+        - generic [ref=e17]:
+          - img [ref=e18]
+          - generic [ref=e21]: Account Access
+        - generic [ref=e22]: Sign in or create an account from the same endpoint. Staff and admins still use the shared customer pool.
+      - generic [ref=e24]:
+        - tablist [ref=e25]:
+          - tab "Sign In" [selected] [ref=e26]
+          - tab "Create Account" [ref=e27]
+        - tabpanel "Sign In" [ref=e28]:
+          - generic [ref=e29]:
+            - generic [ref=e30]:
+              - generic [ref=e31]: Email
+              - textbox "Email" [ref=e32]:
+                - /placeholder: name@example.com
+            - generic [ref=e33]:
+              - generic [ref=e34]: Password
+              - textbox "Password" [ref=e35]
+            - button "Sign in" [ref=e36]

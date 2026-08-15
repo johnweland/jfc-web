@@ -1,0 +1,14 @@
+[       8ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/app_globals_0jn8.0u.css:0
+[     354ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/placeholder.svg:0
+[     396ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[     497ms] [ERROR] WebSocket connection to 'ws://localhost:3001/_next/webpack-hmr?id=UOpKj1S14iN98w3lZ8x5u' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13299
+[     502ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/icon0.svg?icon0.0qtt~v2x435td.svg:0
+[     504ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/favicon.ico?favicon.13.wsjis63ga8.ico:0
+[     505ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/web-app-manifest-144x144.png:0
+[     505ms] [WARNING] Error while trying to use the following icon from the Manifest: http://localhost:3001/web-app-manifest-144x144.png (Download error or resource isn't a valid image) @ http://localhost:3001/:0
+[     507ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/icon1.png?icon1.12zmceo~c6vse.png:0
+[    1508ms] [ERROR] WebSocket connection to 'ws://localhost:3001/_next/webpack-hmr?id=UOpKj1S14iN98w3lZ8x5u' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13299
+[    2515ms] [ERROR] WebSocket connection to 'ws://localhost:3001/_next/webpack-hmr?id=UOpKj1S14iN98w3lZ8x5u' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13299
+[    3517ms] [ERROR] WebSocket connection to 'ws://localhost:3001/_next/webpack-hmr?id=UOpKj1S14iN98w3lZ8x5u' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13299
+[    4520ms] [ERROR] WebSocket connection to 'ws://localhost:3001/_next/webpack-hmr?id=UOpKj1S14iN98w3lZ8x5u' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13299
+[    5526ms] [ERROR] WebSocket connection to 'ws://localhost:3001/_next/webpack-hmr?id=UOpKj1S14iN98w3lZ8x5u' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3001/_next/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13299

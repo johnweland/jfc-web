@@ -16,8 +16,12 @@ const orderStatusClasses: Record<AdminOrderStatus, string> = {
 
 const paymentStatusClasses: Record<AdminPaymentStatus, string> = {
   UNPAID: "bg-surface-container-highest text-[#decd99]",
+  PENDING_PAYMENT: "bg-surface-container-highest text-[#decd99]",
+  PAYMENT_VALIDATION_RECEIVED: "bg-surface-container-highest text-primary",
   AUTHORIZED: "bg-surface-container-highest text-accent",
   PAID: "bg-surface-container-highest text-accent",
+  PAYMENT_DECLINED: "bg-destructive/10 text-destructive",
+  PAYMENT_FAILED: "bg-destructive/10 text-destructive",
   PARTIALLY_REFUNDED: "bg-surface-container-highest text-muted-foreground",
   REFUNDED: "bg-surface-container-highest text-muted-foreground",
   FAILED: "bg-destructive/10 text-destructive",
